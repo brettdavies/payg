@@ -40,14 +40,21 @@ async fn main() {
 }
 
 /// Resolve network config: CLI flag > env var > config file > default.
+///
+/// Prints a warning to stderr when mainnet is selected (defense against
+/// accidental config/env tampering redirecting to real funds).
 pub fn resolve_network(
     cli_network: Option<&str>,
     consumer: &payg::ConsumerConfig,
 ) -> Result<&'static NetworkConfig, payg::PaygError> {
-    match cli_network {
-        Some(name) => payg::network::resolve_network_config(name),
-        None => consumer.resolve_network(),
+    let network = match cli_network {
+        Some(name) => payg::network::resolve_network_config(name)?,
+        None => consumer.resolve_network()?,
+    };
+    if network.name == "base" {
+        eprintln!("WARNING: operating on Base MAINNET — real funds will be used");
     }
+    Ok(network)
 }
 
 fn exit_code(err: &payg::PaygError) -> i32 {

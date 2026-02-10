@@ -145,11 +145,55 @@ fn validate_url(url: &str, field: &str) -> Result<(), PaygError> {
     if url.starts_with("https://") {
         return Ok(());
     }
-    // Allow HTTP for local development
-    if url.starts_with("http://localhost") || url.starts_with("http://127.0.0.1") {
+    // Allow HTTP for local development only — require exact host boundary
+    // to prevent bypass via http://localhost.evil.com or http://127.0.0.1.evil.com
+    if is_localhost_url(url) {
         return Ok(());
     }
     Err(PaygError::ConfigError(format!(
         "{field} must use https:// (got: {url})"
     )))
+}
+
+/// Check if a URL points to localhost or 127.0.0.1 with exact host boundary.
+fn is_localhost_url(url: &str) -> bool {
+    for prefix in ["http://localhost", "http://127.0.0.1"] {
+        if let Some(rest) = url.strip_prefix(prefix) {
+            // After the host, only '/', ':', or end-of-string is valid
+            if rest.is_empty() || rest.starts_with('/') || rest.starts_with(':') {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_url_accepts_https() {
+        assert!(validate_url("https://x402.org/facilitator", "test").is_ok());
+    }
+
+    #[test]
+    fn validate_url_accepts_localhost() {
+        assert!(validate_url("http://localhost:8545", "test").is_ok());
+        assert!(validate_url("http://localhost/path", "test").is_ok());
+        assert!(validate_url("http://localhost", "test").is_ok());
+        assert!(validate_url("http://127.0.0.1:8545", "test").is_ok());
+        assert!(validate_url("http://127.0.0.1", "test").is_ok());
+    }
+
+    #[test]
+    fn validate_url_rejects_localhost_bypass() {
+        assert!(validate_url("http://localhost.evil.com", "test").is_err());
+        assert!(validate_url("http://127.0.0.1.evil.com", "test").is_err());
+    }
+
+    #[test]
+    fn validate_url_rejects_http() {
+        assert!(validate_url("http://example.com", "test").is_err());
+    }
 }
