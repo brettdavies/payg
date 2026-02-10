@@ -2636,7 +2636,6 @@ dependencies = [
  "alloy-rpc-types-eth",
  "alloy-signer-local",
  "reqwest",
- "rpassword",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -2644,6 +2643,7 @@ dependencies = [
  "tracing",
  "x402-chain-eip155",
  "x402-types",
+ "zeroize",
 ]
 
 [[package]]
