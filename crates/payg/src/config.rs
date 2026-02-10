@@ -4,6 +4,7 @@ use alloy_primitives::U256;
 use serde::Deserialize;
 
 use crate::error::PaygError;
+use crate::network::{self, NetworkConfig};
 use crate::{DEFAULT_FACILITATOR_URL, DEFAULT_SAFETY_CEILING_USDC};
 
 /// Project-level config from `payg.toml` in the current working directory.
@@ -30,6 +31,8 @@ pub struct ConsumerConfig {
     pub facilitator_url: Option<String>,
     /// Base RPC URL for ETH backend and balance queries.
     pub rpc_url: Option<String>,
+    /// Network name ("base" or "base-sepolia").
+    pub network: Option<String>,
 }
 
 impl ProjectConfig {
@@ -92,15 +95,24 @@ impl ConsumerConfig {
         Ok(url)
     }
 
-    /// Base RPC URL, with env var override. Validates URL scheme.
-    pub fn rpc_url(&self) -> Result<String, PaygError> {
+    /// Base RPC URL, with env var override. Falls back to network default.
+    pub fn rpc_url(&self, network: &NetworkConfig) -> Result<String, PaygError> {
         let url = std::env::var("PAYG_RPC_URL").unwrap_or_else(|_| {
             self.rpc_url
                 .clone()
-                .unwrap_or_else(|| "https://mainnet.base.org".to_string())
+                .unwrap_or_else(|| network.default_rpc_url.to_string())
         });
         validate_url(&url, "rpc_url")?;
         Ok(url)
+    }
+
+    /// Resolve the network from: PAYG_NETWORK env var > config field > default (base-sepolia).
+    pub fn resolve_network(&self) -> Result<&'static NetworkConfig, PaygError> {
+        let name = std::env::var("PAYG_NETWORK")
+            .ok()
+            .or_else(|| self.network.clone())
+            .unwrap_or_else(|| network::DEFAULT_NETWORK.name.to_string());
+        network::resolve_network_config(&name)
     }
 
     /// Parse the safety ceiling into a U256 with its token type.

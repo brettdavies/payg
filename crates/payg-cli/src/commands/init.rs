@@ -14,7 +14,22 @@ pub struct InitArgs {
     non_interactive: bool,
 }
 
-pub async fn run(args: InitArgs, output: OutputFormat) -> Result<(), PaygError> {
+pub async fn run(
+    args: InitArgs,
+    output: OutputFormat,
+    cli_network: Option<&str>,
+) -> Result<(), PaygError> {
+    // Resolve network early so we can write it to config and show correct messaging.
+    // For init, we don't have a ConsumerConfig yet, so resolve from CLI > env > default.
+    let network = match cli_network {
+        Some(name) => payg::network::resolve_network_config(name)?,
+        None => {
+            let name = std::env::var("PAYG_NETWORK")
+                .unwrap_or_else(|_| payg::network::DEFAULT_NETWORK.name.to_string());
+            payg::network::resolve_network_config(&name)?
+        }
+    };
+
     let home = payg::config::home_dir()?;
 
     let payg_dir = home.join(".payg");
@@ -99,12 +114,13 @@ pub async fn run(args: InitArgs, output: OutputFormat) -> Result<(), PaygError> 
         std::fs::set_permissions(&keyfile_path, std::fs::Permissions::from_mode(0o600))?;
     }
 
-    // Write default config
+    // Write default config with explicit network
     let config_path = payg_dir.join("config.toml");
     if !config_path.exists() {
         let config = format!(
-            "keyfile = \"~/.payg/keyfile.json\"\nmax_charge = \"{}\"\n",
-            payg::DEFAULT_SAFETY_CEILING_DISPLAY
+            "keyfile = \"~/.payg/keyfile.json\"\nmax_charge = \"{}\"\nnetwork = \"{}\"\n",
+            payg::DEFAULT_SAFETY_CEILING_DISPLAY,
+            network.name,
         );
         std::fs::write(&config_path, config)?;
     }
@@ -118,6 +134,7 @@ pub async fn run(args: InitArgs, output: OutputFormat) -> Result<(), PaygError> 
                 "address": format!("{address}"),
                 "keyfile": "~/.payg/keyfile.json",
                 "config": "~/.payg/config.toml",
+                "network": network.name,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }
@@ -126,8 +143,13 @@ pub async fn run(args: InitArgs, output: OutputFormat) -> Result<(), PaygError> 
             println!("Address: {address}");
             println!("Keyfile: ~/.payg/keyfile.json");
             println!("Config:  ~/.payg/config.toml");
+            println!("Network: {} ({})", network.display_name, network.name);
             println!();
-            println!("Fund this address with USDC on Base to start using PAYG.");
+            if network.name == "base-sepolia" {
+                println!("Get testnet USDC from https://faucet.circle.com/");
+            } else {
+                println!("Fund this address with USDC on Base to start using PAYG.");
+            }
         }
     }
 

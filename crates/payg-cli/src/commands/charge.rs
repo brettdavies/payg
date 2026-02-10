@@ -18,8 +18,13 @@ pub struct ChargeArgs {
     dry_run: bool,
 }
 
-pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError> {
+pub async fn run(
+    args: ChargeArgs,
+    output: OutputFormat,
+    cli_network: Option<&str>,
+) -> Result<(), PaygError> {
     let consumer = ConsumerConfig::load()?;
+    let network = crate::resolve_network(cli_network, &consumer)?;
     let project = ProjectConfig::load()?;
 
     // Resolve amount: CLI arg > payg.toml default_price
@@ -59,19 +64,21 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
                     "amount": amount,
                     "recipient": recipient,
                     "wallet": format!("{}", signer.address()),
+                    "network": network.name,
                 });
                 println!("{}", serde_json::to_string(&result).unwrap());
             }
             OutputFormat::Text => {
                 println!("Dry run: would charge {amount} to {recipient}");
-                println!("Wallet: {}", signer.address());
+                println!("Wallet:  {}", signer.address());
+                println!("Network: {} ({})", network.display_name, network.name);
             }
         }
         return Ok(());
     }
 
     // Execute the charge with pre-loaded config and signer (no double loading)
-    let receipt = payg::charge_with_config(&amount, &recipient, &consumer, signer).await?;
+    let receipt = payg::charge_with_config(&amount, &recipient, &consumer, network, signer).await?;
 
     match output {
         OutputFormat::Json => {
@@ -80,6 +87,7 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
                 "tx_hash": receipt.tx_hash,
                 "amount": amount,
                 "recipient": recipient,
+                "network": network.name,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }
