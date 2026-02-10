@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use alloy_primitives::{Address, U256};
 use alloy_signer_local::PrivateKeySigner;
 use x402_chain_eip155::v1_eip155_exact::client::{
@@ -13,21 +15,32 @@ use crate::config::ConsumerConfig;
 use crate::error::PaygError;
 use crate::{BASE_CHAIN_ID, BASE_USDC_ADDRESS};
 
+/// Maximum authorization validity window in seconds (2 minutes).
+const MAX_TIMEOUT_SECONDS: u64 = 120;
+
 /// x402 payment backend using ERC-3009 transferWithAuthorization via USDC on Base.
 pub struct X402Backend {
     facilitator_url: String,
     signer: PrivateKeySigner,
     usdc_address: Address,
+    client: reqwest::Client,
 }
 
 impl X402Backend {
     pub fn new(config: &ConsumerConfig, signer: PrivateKeySigner) -> Result<Self, PaygError> {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| PaygError::Http(e.to_string()))?;
+
         Ok(Self {
             facilitator_url: config.facilitator_url()?,
             signer,
             usdc_address: BASE_USDC_ADDRESS
                 .parse()
                 .expect("hardcoded USDC address is valid"),
+            client,
         })
     }
 
@@ -38,7 +51,7 @@ impl X402Backend {
             asset_address: self.usdc_address,
             pay_to: request.recipient,
             amount: request.amount,
-            max_timeout_seconds: 3600,
+            max_timeout_seconds: MAX_TIMEOUT_SECONDS,
             extra: Some(PaymentRequirementsExtra {
                 name: "USD Coin".to_string(),
                 version: "2".to_string(),
@@ -66,8 +79,8 @@ impl X402Backend {
         );
 
         // 3. POST to facilitator /settle
-        let client = reqwest::Client::new();
-        let response = client
+        let response = self
+            .client
             .post(format!("{}/settle", self.facilitator_url))
             .json(&settle_json)
             .send()
@@ -129,7 +142,7 @@ fn build_settle_request(
         mime_type: "application/json".to_string(),
         output_schema: None,
         pay_to: recipient,
-        max_timeout_seconds: 3600,
+        max_timeout_seconds: MAX_TIMEOUT_SECONDS,
         asset,
         extra: Some(PaymentRequirementsExtra {
             name: "USD Coin".to_string(),
