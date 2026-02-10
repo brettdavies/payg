@@ -9,7 +9,14 @@ use crate::error::PaygError;
 /// Checks in order:
 /// 1. `PAYG_PRIVATE_KEY` env var (recommended for agents — avoids scrypt overhead)
 /// 2. Encrypted keyfile at the configured path (default: `~/.payg/keyfile.json`)
-pub fn load_wallet(config: &ConsumerConfig) -> Result<PrivateKeySigner, PaygError> {
+///
+/// For the keyfile path, a password is required. The caller provides it via
+/// the `password` parameter — typically from `PAYG_KEY_PASSWORD` env var or
+/// an interactive prompt in the CLI.
+pub fn load_wallet(
+    config: &ConsumerConfig,
+    password: Option<&str>,
+) -> Result<PrivateKeySigner, PaygError> {
     // Fast path: env var (agents, CI, testing)
     if let Ok(key) = std::env::var("PAYG_PRIVATE_KEY") {
         tracing::debug!("loading wallet from PAYG_PRIVATE_KEY env var");
@@ -25,24 +32,14 @@ pub fn load_wallet(config: &ConsumerConfig) -> Result<PrivateKeySigner, PaygErro
         return Err(PaygError::NoWallet);
     }
 
-    let password = keyfile_password()?;
+    let password = password.ok_or_else(|| {
+        PaygError::WalletError(
+            "keyfile password required. Set PAYG_PRIVATE_KEY or PAYG_KEY_PASSWORD environment variable for non-interactive use".to_string()
+        )
+    })?;
+
     tracing::debug!(?keyfile, "decrypting keyfile");
 
     PrivateKeySigner::decrypt_keystore(&keyfile, password)
         .map_err(|e| PaygError::WalletError(format!("keyfile decryption failed: {e}")))
-}
-
-/// Get the keyfile password from env var or interactive prompt.
-fn keyfile_password() -> Result<String, PaygError> {
-    if let Ok(pw) = std::env::var("PAYG_KEY_PASSWORD") {
-        return Ok(pw);
-    }
-
-    // Interactive prompt (only works with a TTY)
-    rpassword::prompt_password("Keyfile password: ")
-        .map_err(|e| {
-            PaygError::WalletError(format!(
-                "failed to read password: {e}. Set PAYG_PRIVATE_KEY or PAYG_KEY_PASSWORD environment variable for non-interactive use"
-            ))
-        })
 }

@@ -9,7 +9,7 @@ pub struct AddressArgs;
 
 pub async fn run(_args: AddressArgs, output: OutputFormat) -> Result<(), PaygError> {
     let config = ConsumerConfig::load()?;
-    let signer = payg::wallet::load_wallet(&config)?;
+    let signer = super::wallet_helper::load_wallet_interactive(&config)?;
     let address = signer.address();
 
     match output {

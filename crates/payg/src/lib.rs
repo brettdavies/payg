@@ -37,7 +37,8 @@ pub const DEFAULT_FACILITATOR_URL: &str = "https://x402.org/facilitator";
 /// For pre-loaded config/wallet, use [`charge_with_config`].
 pub async fn charge(amount: &str, recipient: &str) -> Result<ChargeReceipt, PaygError> {
     let consumer_config = ConsumerConfig::load()?;
-    let signer = wallet::load_wallet(&consumer_config)?;
+    let password = std::env::var("PAYG_KEY_PASSWORD").ok();
+    let signer = wallet::load_wallet(&consumer_config, password.as_deref())?;
     charge_with_config(amount, recipient, &consumer_config, signer).await
 }
 

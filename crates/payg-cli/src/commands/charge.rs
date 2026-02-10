@@ -49,7 +49,7 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
     payg::check_safety_ceiling(&parsed, &amount, &consumer)?;
 
     // Load wallet once
-    let signer = payg::wallet::load_wallet(&consumer)?;
+    let signer = super::wallet_helper::load_wallet_interactive(&consumer)?;
 
     if args.dry_run {
         match output {

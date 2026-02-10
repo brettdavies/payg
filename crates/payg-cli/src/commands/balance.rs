@@ -12,7 +12,7 @@ pub struct BalanceArgs;
 
 pub async fn run(_args: BalanceArgs, output: OutputFormat) -> Result<(), PaygError> {
     let config = ConsumerConfig::load()?;
-    let signer = payg::wallet::load_wallet(&config)?;
+    let signer = super::wallet_helper::load_wallet_interactive(&config)?;
     let address = signer.address();
 
     let rpc_url = config.rpc_url()?;
