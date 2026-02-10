@@ -1,0 +1,25 @@
+# Rust build output
+/target
+**/target
+
+# Environment and secrets
+.env
+.env.*
+*.enc
+*.pem
+*.key
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
