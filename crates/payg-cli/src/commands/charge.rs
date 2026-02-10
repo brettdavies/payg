@@ -49,9 +49,12 @@ pub async fn run(
             )
         })?;
 
-    // Validate ceiling before expensive wallet load
+    // Validate before expensive wallet load (fail fast before scrypt decryption)
     let parsed = payg::pricing::parse_price(&amount)?;
     payg::check_safety_ceiling(&parsed, &amount, &consumer)?;
+    let recipient_addr: alloy_primitives::Address = recipient
+        .parse()
+        .map_err(|e| PaygError::ConfigError(format!("invalid recipient address: {e}")))?;
 
     // Load wallet once
     let signer = super::wallet_helper::load_wallet_interactive(&consumer)?;
@@ -79,8 +82,9 @@ pub async fn run(
         return Ok(());
     }
 
-    // Execute the charge with pre-loaded config and signer (no double loading)
-    let receipt = payg::charge_with_config(&amount, &recipient, &consumer, network, signer).await?;
+    // Use charge_validated since we already parsed and validated above
+    let receipt =
+        payg::charge_validated(parsed.amount, recipient_addr, &consumer, network, signer).await?;
 
     match output {
         OutputFormat::Json => {

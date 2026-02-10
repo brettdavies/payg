@@ -5,22 +5,18 @@ pub mod backend;
 pub mod charge;
 pub mod config;
 pub mod error;
+pub mod network;
 pub mod pricing;
 pub mod wallet;
 
 pub use charge::{ChargeReceipt, ChargeRequest};
 pub use config::{ConsumerConfig, ProjectConfig};
 pub use error::PaygError;
+pub use network::NetworkConfig;
 
 use alloy_primitives::Address;
 use alloy_signer_local::PrivateKeySigner;
 use backend::Backend;
-
-/// Base L2 chain ID.
-pub const BASE_CHAIN_ID: u64 = 8453;
-
-/// USDC contract address on Base.
-pub const BASE_USDC_ADDRESS: &str = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 /// Default safety ceiling: $1.00 USDC (6 decimals).
 pub const DEFAULT_SAFETY_CEILING_USDC: u64 = 1_000_000;
@@ -37,19 +33,22 @@ pub const DEFAULT_FACILITATOR_URL: &str = "https://x402.org/facilitator";
 /// For pre-loaded config/wallet, use [`charge_with_config`].
 pub async fn charge(amount: &str, recipient: &str) -> Result<ChargeReceipt, PaygError> {
     let consumer_config = ConsumerConfig::load()?;
+    let network = consumer_config.resolve_network()?;
     let password = std::env::var("PAYG_KEY_PASSWORD").ok();
     let signer = wallet::load_wallet(&consumer_config, password.as_deref())?;
-    charge_with_config(amount, recipient, &consumer_config, signer).await
+    charge_with_config(amount, recipient, &consumer_config, network, signer).await
 }
 
 /// Charge a recipient using pre-loaded config and signer.
 ///
-/// Use this when you already have the config and signer loaded (avoids redundant
-/// config file reads and keyfile decryption).
+/// Parses and validates the amount and recipient, then executes the charge.
+/// For pre-validated inputs (e.g. when the CLI has already validated), use
+/// [`charge_validated`] to avoid redundant parsing.
 pub async fn charge_with_config(
     amount: &str,
     recipient: &str,
     consumer_config: &ConsumerConfig,
+    network: &'static NetworkConfig,
     signer: PrivateKeySigner,
 ) -> Result<ChargeReceipt, PaygError> {
     let parsed = pricing::parse_price(amount)?;
@@ -59,12 +58,22 @@ pub async fn charge_with_config(
 
     check_safety_ceiling(&parsed, amount, consumer_config)?;
 
-    let request = ChargeRequest {
-        amount: parsed.amount,
-        recipient,
-    };
+    charge_validated(parsed.amount, recipient, consumer_config, network, signer).await
+}
 
-    let backend = Backend::from_config(consumer_config, signer)?;
+/// Charge with pre-validated amount and recipient.
+///
+/// Skips parsing and safety ceiling checks. Use this when validation has
+/// already been performed (e.g. by the CLI before wallet load).
+pub async fn charge_validated(
+    amount: alloy_primitives::U256,
+    recipient: Address,
+    consumer_config: &ConsumerConfig,
+    network: &'static NetworkConfig,
+    signer: PrivateKeySigner,
+) -> Result<ChargeReceipt, PaygError> {
+    let request = ChargeRequest { amount, recipient };
+    let backend = Backend::from_config(consumer_config, network, signer)?;
     backend.charge(&request).await
 }
 
