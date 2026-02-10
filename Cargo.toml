@@ -6,4 +6,4 @@ members = ["crates/payg", "crates/payg-cli"]
 strip = true
 lto = "thin"
 codegen-units = 1
-opt-level = "s"
+opt-level = 2

@@ -5,7 +5,9 @@ use crate::commands::{address, balance, charge, init};
 #[derive(Parser)]
 #[command(
     name = "payg",
-    about = "Pay-as-you-go crypto micropayments for CLI tools"
+    version,
+    about = "Pay-as-you-go crypto micropayments for CLI tools",
+    after_help = "EXIT CODES:\n  0   Success\n  1   General error\n  42  Payment failed or exceeds safety ceiling\n  77  Wallet error (missing or decryption failure)\n  78  Configuration error"
 )]
 pub struct Cli {
     #[command(subcommand)]
