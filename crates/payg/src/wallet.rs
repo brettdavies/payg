@@ -1,4 +1,5 @@
 use alloy_signer_local::PrivateKeySigner;
+use zeroize::Zeroizing;
 
 use crate::config::ConsumerConfig;
 use crate::error::PaygError;
@@ -12,6 +13,7 @@ pub fn load_wallet(config: &ConsumerConfig) -> Result<PrivateKeySigner, PaygErro
     // Fast path: env var (agents, CI, testing)
     if let Ok(key) = std::env::var("PAYG_PRIVATE_KEY") {
         tracing::debug!("loading wallet from PAYG_PRIVATE_KEY env var");
+        let key = Zeroizing::new(key);
         return key
             .parse::<PrivateKeySigner>()
             .map_err(|e| PaygError::WalletError(format!("invalid private key: {e}")));
@@ -38,5 +40,9 @@ fn keyfile_password() -> Result<String, PaygError> {
 
     // Interactive prompt (only works with a TTY)
     rpassword::prompt_password("Keyfile password: ")
-        .map_err(|e| PaygError::WalletError(format!("failed to read password: {e}")))
+        .map_err(|e| {
+            PaygError::WalletError(format!(
+                "failed to read password: {e}. Set PAYG_PRIVATE_KEY or PAYG_KEY_PASSWORD environment variable for non-interactive use"
+            ))
+        })
 }
