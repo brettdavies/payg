@@ -100,10 +100,15 @@ impl X402Backend {
             let tx_hash = body
                 .get("transaction")
                 .and_then(|v| v.as_str())
-                .unwrap_or("unknown")
+                .filter(|h| h.starts_with("0x") && h.len() == 66)
+                .ok_or_else(|| {
+                    PaygError::PaymentFailed(
+                        "facilitator returned success but invalid or missing tx_hash".to_string(),
+                    )
+                })?
                 .to_string();
 
-            tracing::info!(%tx_hash, "payment settled on-chain");
+            tracing::info!(%tx_hash, "payment settled on-chain (unverified)");
             return Ok(ChargeReceipt { tx_hash });
         }
 
