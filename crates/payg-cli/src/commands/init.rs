@@ -13,19 +13,51 @@ pub struct InitArgs {
 }
 
 pub async fn run(args: InitArgs) -> Result<(), PaygError> {
-    let home = std::env::var("HOME")
-        .map(PathBuf::from)
-        .map_err(|_| PaygError::ConfigError("HOME not set".to_string()))?;
+    let home = payg::config::home_dir()?;
 
     let payg_dir = home.join(".payg");
-    std::fs::create_dir_all(&payg_dir)?;
+    create_dir_secure(&payg_dir)?;
 
     let keyfile_path = payg_dir.join("keyfile.json");
-    if keyfile_path.exists() {
-        return Err(PaygError::ConfigError(
-            "wallet already exists at ~/.payg/keyfile.json — delete it first to reinitialize"
-                .to_string(),
-        ));
+
+    // Atomic existence check: create_new fails if file already exists (no TOCTOU race)
+    #[cfg(unix)]
+    {
+        use std::fs::OpenOptions;
+        use std::os::unix::fs::OpenOptionsExt;
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&keyfile_path)
+            .map_err(|e| {
+                if e.kind() == std::io::ErrorKind::AlreadyExists {
+                    PaygError::ConfigError(
+                        "wallet already exists at ~/.payg/keyfile.json — delete it first to reinitialize"
+                            .to_string(),
+                    )
+                } else {
+                    PaygError::Io(e)
+                }
+            })?;
+    }
+    #[cfg(not(unix))]
+    {
+        use std::fs::OpenOptions;
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&keyfile_path)
+            .map_err(|e| {
+                if e.kind() == std::io::ErrorKind::AlreadyExists {
+                    PaygError::ConfigError(
+                        "wallet already exists at ~/.payg/keyfile.json — delete it first to reinitialize"
+                            .to_string(),
+                    )
+                } else {
+                    PaygError::Io(e)
+                }
+            })?;
     }
 
     let password = if args.non_interactive {
@@ -45,7 +77,7 @@ pub async fn run(args: InitArgs) -> Result<(), PaygError> {
         pw
     };
 
-    // Generate new key and encrypt to keyfile
+    // Generate new key and encrypt to keyfile (overwrites the placeholder we created)
     let signer = PrivateKeySigner::random();
     let pk_bytes = signer.credential().to_bytes();
 
@@ -58,18 +90,18 @@ pub async fn run(args: InitArgs) -> Result<(), PaygError> {
     )
     .map_err(|e| PaygError::WalletError(format!("failed to create keyfile: {e}")))?;
 
+    // Ensure keyfile has correct permissions after encrypt_keystore overwrites it
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&keyfile_path, std::fs::Permissions::from_mode(0o600))?;
+    }
+
     // Write default config
     let config_path = payg_dir.join("config.toml");
     if !config_path.exists() {
         let config = "keyfile = \"~/.payg/keyfile.json\"\nmax_charge = \"1.00 USDC\"\n".to_string();
         std::fs::write(&config_path, config)?;
-    }
-
-    // Set restrictive permissions on keyfile
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&keyfile_path, std::fs::Permissions::from_mode(0o600))?;
     }
 
     let address = signer.address();
@@ -79,6 +111,30 @@ pub async fn run(args: InitArgs) -> Result<(), PaygError> {
     eprintln!("Config:  ~/.payg/config.toml");
     eprintln!();
     eprintln!("Fund this address with USDC on Base to start using PAYG.");
+
+    Ok(())
+}
+
+/// Create a directory with 0o700 permissions on Unix.
+fn create_dir_secure(path: &PathBuf) -> Result<(), PaygError> {
+    if path.exists() {
+        return Ok(());
+    }
+
+    #[cfg(unix)]
+    {
+        use std::fs;
+        use std::os::unix::fs::DirBuilderExt;
+        fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(path)?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        std::fs::create_dir_all(path)?;
+    }
 
     Ok(())
 }

@@ -112,11 +112,8 @@ impl ConsumerConfig {
     }
 }
 
-fn home_dir() -> Result<PathBuf, PaygError> {
-    dirs_or_env()
-}
-
-fn dirs_or_env() -> Result<PathBuf, PaygError> {
+/// Resolve the user's home directory from the HOME environment variable.
+pub fn home_dir() -> Result<PathBuf, PaygError> {
     std::env::var("HOME")
         .map(PathBuf::from)
         .map_err(|_| PaygError::ConfigError("HOME not set".to_string()))
