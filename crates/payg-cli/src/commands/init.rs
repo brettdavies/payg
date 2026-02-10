@@ -129,12 +129,18 @@ pub async fn run(
 
     match output {
         OutputFormat::Json => {
+            let faucet_url = if network.name == "base-sepolia" {
+                Some("https://faucet.circle.com/")
+            } else {
+                None
+            };
             let result = serde_json::json!({
                 "status": "created",
                 "address": format!("{address}"),
                 "keyfile": "~/.payg/keyfile.json",
                 "config": "~/.payg/config.toml",
                 "network": network.name,
+                "faucet_url": faucet_url,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }

@@ -7,8 +7,13 @@ use crate::cli::OutputFormat;
 #[derive(Args)]
 pub struct AddressArgs;
 
-pub async fn run(_args: AddressArgs, output: OutputFormat) -> Result<(), PaygError> {
+pub async fn run(
+    _args: AddressArgs,
+    output: OutputFormat,
+    cli_network: Option<&str>,
+) -> Result<(), PaygError> {
     let config = ConsumerConfig::load()?;
+    let network = crate::resolve_network(cli_network, &config)?;
     let signer = super::wallet_helper::load_wallet_interactive(&config)?;
     let address = signer.address();
 
@@ -16,6 +21,7 @@ pub async fn run(_args: AddressArgs, output: OutputFormat) -> Result<(), PaygErr
         OutputFormat::Json => {
             let result = serde_json::json!({
                 "address": format!("{address}"),
+                "network": network.name,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }

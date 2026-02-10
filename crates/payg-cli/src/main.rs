@@ -5,6 +5,7 @@ use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
 use cli::{Cli, Command};
+use payg::NetworkConfig;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -15,10 +16,16 @@ async fn main() {
 
     let cli = Cli::parse();
     let result = match cli.command {
-        Command::Init(args) => commands::init::run(args, cli.output).await,
-        Command::Charge(args) => commands::charge::run(args, cli.output).await,
-        Command::Address(args) => commands::address::run(args, cli.output).await,
-        Command::Balance(args) => commands::balance::run(args, cli.output).await,
+        Command::Init(args) => commands::init::run(args, cli.output, cli.network.as_deref()).await,
+        Command::Charge(args) => {
+            commands::charge::run(args, cli.output, cli.network.as_deref()).await
+        }
+        Command::Address(args) => {
+            commands::address::run(args, cli.output, cli.network.as_deref()).await
+        }
+        Command::Balance(args) => {
+            commands::balance::run(args, cli.output, cli.network.as_deref()).await
+        }
     };
 
     if let Err(e) = result {
@@ -34,6 +41,17 @@ async fn main() {
             eprintln!("error: {e}");
         }
         std::process::exit(code);
+    }
+}
+
+/// Resolve network config: CLI flag > env var > config file > default.
+pub fn resolve_network(
+    cli_network: Option<&str>,
+    consumer: &payg::ConsumerConfig,
+) -> Result<&'static NetworkConfig, payg::PaygError> {
+    match cli_network {
+        Some(name) => payg::network::resolve_network_config(name),
+        None => consumer.resolve_network(),
     }
 }
 
