@@ -21,5 +21,8 @@
 .DS_Store
 Thumbs.db
 
+# Review todos
+/todos
+
 # Claude Code
 .claude/
