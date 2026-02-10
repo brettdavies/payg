@@ -1,0 +1,9 @@
+[workspace]
+resolver = "3"
+members = ["crates/payg", "crates/payg-cli"]
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1
+opt-level = 2
