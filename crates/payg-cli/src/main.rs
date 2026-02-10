@@ -15,7 +15,7 @@ async fn main() {
 
     let cli = Cli::parse();
     let result = match cli.command {
-        Command::Init(args) => commands::init::run(args).await,
+        Command::Init(args) => commands::init::run(args, cli.output).await,
         Command::Charge(args) => commands::charge::run(args, cli.output).await,
         Command::Address(args) => commands::address::run(args, cli.output).await,
         Command::Balance(args) => commands::balance::run(args, cli.output).await,
@@ -29,7 +29,7 @@ async fn main() {
                 "code": error_code(&e),
                 "message": e.to_string(),
             });
-            eprintln!("{}", serde_json::to_string(&err).unwrap());
+            println!("{}", serde_json::to_string(&err).unwrap());
         } else {
             eprintln!("error: {e}");
         }

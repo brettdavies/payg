@@ -5,6 +5,8 @@ use clap::Args;
 
 use payg::PaygError;
 
+use crate::cli::OutputFormat;
+
 #[derive(Args)]
 pub struct InitArgs {
     /// Run without interactive prompts (uses env vars)
@@ -12,7 +14,7 @@ pub struct InitArgs {
     non_interactive: bool,
 }
 
-pub async fn run(args: InitArgs) -> Result<(), PaygError> {
+pub async fn run(args: InitArgs, output: OutputFormat) -> Result<(), PaygError> {
     let home = payg::config::home_dir()?;
 
     let payg_dir = home.join(".payg");
@@ -105,12 +107,26 @@ pub async fn run(args: InitArgs) -> Result<(), PaygError> {
     }
 
     let address = signer.address();
-    eprintln!("Wallet initialized successfully.");
-    eprintln!("Address: {address}");
-    eprintln!("Keyfile: ~/.payg/keyfile.json");
-    eprintln!("Config:  ~/.payg/config.toml");
-    eprintln!();
-    eprintln!("Fund this address with USDC on Base to start using PAYG.");
+
+    match output {
+        OutputFormat::Json => {
+            let result = serde_json::json!({
+                "status": "created",
+                "address": format!("{address}"),
+                "keyfile": "~/.payg/keyfile.json",
+                "config": "~/.payg/config.toml",
+            });
+            println!("{}", serde_json::to_string(&result).unwrap());
+        }
+        OutputFormat::Text => {
+            println!("Wallet initialized successfully.");
+            println!("Address: {address}");
+            println!("Keyfile: ~/.payg/keyfile.json");
+            println!("Config:  ~/.payg/config.toml");
+            println!();
+            println!("Fund this address with USDC on Base to start using PAYG.");
+        }
+    }
 
     Ok(())
 }
