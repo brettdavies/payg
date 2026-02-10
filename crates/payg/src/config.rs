@@ -100,19 +100,21 @@ impl ConsumerConfig {
         Ok(url)
     }
 
-    /// Parse the safety ceiling into a U256.
-    pub fn safety_ceiling_u256(&self) -> U256 {
+    /// Parse the safety ceiling into a U256 with its token type.
+    ///
+    /// Returns (amount in smallest units, token symbol).
+    pub fn safety_ceiling_with_token(&self) -> (U256, String) {
         if let Ok(val) = std::env::var("PAYG_MAX_CHARGE")
             && let Ok(parsed) = crate::pricing::parse_price(&val)
         {
-            return parsed.amount;
+            return (parsed.amount, parsed.token);
         }
         if let Some(ref mc) = self.max_charge
             && let Ok(parsed) = crate::pricing::parse_price(mc)
         {
-            return parsed.amount;
+            return (parsed.amount, parsed.token);
         }
-        U256::from(DEFAULT_SAFETY_CEILING_USDC)
+        (U256::from(DEFAULT_SAFETY_CEILING_USDC), "USDC".to_string())
     }
 }
 

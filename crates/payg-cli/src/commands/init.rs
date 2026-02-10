@@ -102,7 +102,10 @@ pub async fn run(args: InitArgs, output: OutputFormat) -> Result<(), PaygError> 
     // Write default config
     let config_path = payg_dir.join("config.toml");
     if !config_path.exists() {
-        let config = "keyfile = \"~/.payg/keyfile.json\"\nmax_charge = \"1.00 USDC\"\n".to_string();
+        let config = format!(
+            "keyfile = \"~/.payg/keyfile.json\"\nmax_charge = \"{}\"\n",
+            payg::DEFAULT_SAFETY_CEILING_DISPLAY
+        );
         std::fs::write(&config_path, config)?;
     }
 

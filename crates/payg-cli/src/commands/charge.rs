@@ -44,24 +44,14 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
             )
         })?;
 
+    // Validate ceiling before expensive wallet load
+    let parsed = payg::pricing::parse_price(&amount)?;
+    payg::check_safety_ceiling(&parsed, &amount, &consumer)?;
+
+    // Load wallet once
+    let signer = payg::wallet::load_wallet(&consumer)?;
+
     if args.dry_run {
-        // Validate everything without sending
-        let parsed = payg::pricing::parse_price(&amount)?;
-        let ceiling = consumer.safety_ceiling_u256();
-
-        if parsed.amount > ceiling {
-            return Err(PaygError::ExceedsSafetyCeiling {
-                amount: amount.clone(),
-                ceiling: consumer
-                    .max_charge
-                    .clone()
-                    .unwrap_or_else(|| "1.00 USDC".to_string()),
-            });
-        }
-
-        // Verify wallet loads
-        let signer = payg::wallet::load_wallet(&consumer)?;
-
         match output {
             OutputFormat::Json => {
                 let result = serde_json::json!({
@@ -70,18 +60,18 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
                     "recipient": recipient,
                     "wallet": format!("{}", signer.address()),
                 });
-                println!("{}", serde_json::to_string_pretty(&result).unwrap());
+                println!("{}", serde_json::to_string(&result).unwrap());
             }
             OutputFormat::Text => {
-                eprintln!("Dry run: would charge {amount} to {recipient}");
-                eprintln!("Wallet: {}", signer.address());
+                println!("Dry run: would charge {amount} to {recipient}");
+                println!("Wallet: {}", signer.address());
             }
         }
         return Ok(());
     }
 
-    // Execute the charge
-    let receipt = payg::charge(&amount, &recipient).await?;
+    // Execute the charge with pre-loaded config and signer (no double loading)
+    let receipt = payg::charge_with_config(&amount, &recipient, &consumer, signer).await?;
 
     match output {
         OutputFormat::Json => {
@@ -94,7 +84,7 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
             println!("{}", serde_json::to_string(&result).unwrap());
         }
         OutputFormat::Text => {
-            eprintln!("Charged {amount} -> {recipient} (tx: {})", receipt.tx_hash);
+            println!("Charged {amount} -> {recipient} (tx: {})", receipt.tx_hash);
         }
     }
 

@@ -13,7 +13,7 @@ use self::eth::EthBackend;
 use alloy_signer_local::PrivateKeySigner;
 
 use crate::charge::{ChargeReceipt, ChargeRequest};
-use crate::config::{ConsumerConfig, ProjectConfig};
+use crate::config::ConsumerConfig;
 use crate::error::PaygError;
 
 /// Payment backend, selected at compile time via feature flags.
@@ -31,7 +31,6 @@ impl Backend {
     /// If only `eth` is enabled, creates an ETH backend.
     pub fn from_config(
         consumer: &ConsumerConfig,
-        _project: &Option<ProjectConfig>,
         signer: PrivateKeySigner,
     ) -> Result<Self, PaygError> {
         #[cfg(feature = "x402")]
