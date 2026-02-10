@@ -16,6 +16,10 @@ pub struct Cli {
     /// Output format
     #[arg(long, global = true, default_value = "text")]
     pub output: OutputFormat,
+
+    /// Target network
+    #[arg(long, global = true, env = "PAYG_NETWORK")]
+    pub network: Option<NetworkName>,
 }
 
 #[derive(Subcommand)]
@@ -34,4 +38,22 @@ pub enum Command {
 pub enum OutputFormat {
     Text,
     Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum NetworkName {
+    /// Base mainnet (real funds)
+    Base,
+    /// Base Sepolia testnet
+    #[value(name = "base-sepolia")]
+    BaseSepolia,
+}
+
+impl NetworkName {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Base => "base",
+            Self::BaseSepolia => "base-sepolia",
+        }
+    }
 }

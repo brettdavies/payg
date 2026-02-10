@@ -15,17 +15,12 @@ async fn main() {
         .init();
 
     let cli = Cli::parse();
+    let network_str = cli.network.map(|n| n.as_str());
     let result = match cli.command {
-        Command::Init(args) => commands::init::run(args, cli.output, cli.network.as_deref()).await,
-        Command::Charge(args) => {
-            commands::charge::run(args, cli.output, cli.network.as_deref()).await
-        }
-        Command::Address(args) => {
-            commands::address::run(args, cli.output, cli.network.as_deref()).await
-        }
-        Command::Balance(args) => {
-            commands::balance::run(args, cli.output, cli.network.as_deref()).await
-        }
+        Command::Init(args) => commands::init::run(args, cli.output, network_str).await,
+        Command::Charge(args) => commands::charge::run(args, cli.output, network_str).await,
+        Command::Address(args) => commands::address::run(args, cli.output, network_str).await,
+        Command::Balance(args) => commands::balance::run(args, cli.output, network_str).await,
     };
 
     if let Err(e) = result {

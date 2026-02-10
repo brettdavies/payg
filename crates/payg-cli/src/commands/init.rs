@@ -20,14 +20,11 @@ pub async fn run(
     cli_network: Option<&str>,
 ) -> Result<(), PaygError> {
     // Resolve network early so we can write it to config and show correct messaging.
-    // For init, we don't have a ConsumerConfig yet, so resolve from CLI > env > default.
+    // For init, we don't have a ConsumerConfig yet. Clap handles CLI flag + PAYG_NETWORK
+    // env var, so cli_network is Some if either was provided. Otherwise use default.
     let network = match cli_network {
         Some(name) => payg::network::resolve_network_config(name)?,
-        None => {
-            let name = std::env::var("PAYG_NETWORK")
-                .unwrap_or_else(|_| payg::network::DEFAULT_NETWORK.name.to_string());
-            payg::network::resolve_network_config(&name)?
-        }
+        None => payg::network::DEFAULT_NETWORK,
     };
 
     let home = payg::config::home_dir()?;
