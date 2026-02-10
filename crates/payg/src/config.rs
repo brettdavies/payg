@@ -78,22 +78,26 @@ impl ConsumerConfig {
         }
     }
 
-    /// Facilitator URL, with env var override.
-    pub fn facilitator_url(&self) -> String {
-        std::env::var("PAYG_FACILITATOR_URL").unwrap_or_else(|_| {
+    /// Facilitator URL, with env var override. Validates HTTPS requirement.
+    pub fn facilitator_url(&self) -> Result<String, PaygError> {
+        let url = std::env::var("PAYG_FACILITATOR_URL").unwrap_or_else(|_| {
             self.facilitator_url
                 .clone()
                 .unwrap_or_else(|| DEFAULT_FACILITATOR_URL.to_string())
-        })
+        });
+        validate_url(&url, "facilitator_url")?;
+        Ok(url)
     }
 
-    /// Base RPC URL, with env var override.
-    pub fn rpc_url(&self) -> String {
-        std::env::var("PAYG_RPC_URL").unwrap_or_else(|_| {
+    /// Base RPC URL, with env var override. Validates URL scheme.
+    pub fn rpc_url(&self) -> Result<String, PaygError> {
+        let url = std::env::var("PAYG_RPC_URL").unwrap_or_else(|_| {
             self.rpc_url
                 .clone()
                 .unwrap_or_else(|| "https://mainnet.base.org".to_string())
-        })
+        });
+        validate_url(&url, "rpc_url")?;
+        Ok(url)
     }
 
     /// Parse the safety ceiling into a U256.
@@ -117,4 +121,18 @@ pub fn home_dir() -> Result<PathBuf, PaygError> {
     std::env::var("HOME")
         .map(PathBuf::from)
         .map_err(|_| PaygError::ConfigError("HOME not set".to_string()))
+}
+
+/// Validate that a URL uses HTTPS (or HTTP for localhost/127.0.0.1 in dev).
+fn validate_url(url: &str, field: &str) -> Result<(), PaygError> {
+    if url.starts_with("https://") {
+        return Ok(());
+    }
+    // Allow HTTP for local development
+    if url.starts_with("http://localhost") || url.starts_with("http://127.0.0.1") {
+        return Ok(());
+    }
+    Err(PaygError::ConfigError(format!(
+        "{field} must use https:// (got: {url})"
+    )))
 }

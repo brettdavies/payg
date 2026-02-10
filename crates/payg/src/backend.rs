@@ -36,12 +36,12 @@ impl Backend {
     ) -> Result<Self, PaygError> {
         #[cfg(feature = "x402")]
         {
-            Ok(Self::X402(X402Backend::new(consumer, signer)))
+            Ok(Self::X402(X402Backend::new(consumer, signer)?))
         }
 
         #[cfg(all(feature = "eth", not(feature = "x402")))]
         {
-            return Ok(Self::Eth(EthBackend::new(consumer, signer)));
+            return Ok(Self::Eth(EthBackend::new(consumer, signer)?));
         }
     }
 

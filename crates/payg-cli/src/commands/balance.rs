@@ -13,7 +13,7 @@ pub async fn run(_args: BalanceArgs, output: OutputFormat) -> Result<(), PaygErr
     let signer = payg::wallet::load_wallet(&config)?;
     let address = signer.address();
 
-    let rpc_url = config.rpc_url();
+    let rpc_url = config.rpc_url()?;
 
     // Query ETH balance via JSON-RPC
     let eth_balance = query_eth_balance(&rpc_url, &format!("{address}")).await?;

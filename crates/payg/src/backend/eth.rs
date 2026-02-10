@@ -16,11 +16,11 @@ pub struct EthBackend {
 }
 
 impl EthBackend {
-    pub fn new(config: &ConsumerConfig, signer: PrivateKeySigner) -> Self {
-        Self {
-            rpc_url: config.rpc_url(),
+    pub fn new(config: &ConsumerConfig, signer: PrivateKeySigner) -> Result<Self, PaygError> {
+        Ok(Self {
+            rpc_url: config.rpc_url()?,
             signer,
-        }
+        })
     }
 
     pub async fn charge(&self, request: &ChargeRequest) -> Result<ChargeReceipt, PaygError> {

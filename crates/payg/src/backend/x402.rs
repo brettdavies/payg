@@ -21,14 +21,14 @@ pub struct X402Backend {
 }
 
 impl X402Backend {
-    pub fn new(config: &ConsumerConfig, signer: PrivateKeySigner) -> Self {
-        Self {
-            facilitator_url: config.facilitator_url(),
+    pub fn new(config: &ConsumerConfig, signer: PrivateKeySigner) -> Result<Self, PaygError> {
+        Ok(Self {
+            facilitator_url: config.facilitator_url()?,
             signer,
             usdc_address: BASE_USDC_ADDRESS
                 .parse()
                 .expect("hardcoded USDC address is valid"),
-        }
+        })
     }
 
     pub async fn charge(&self, request: &ChargeRequest) -> Result<ChargeReceipt, PaygError> {
