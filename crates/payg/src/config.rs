@@ -34,15 +34,18 @@ pub struct ConsumerConfig {
 
 impl ProjectConfig {
     /// Load `payg.toml` from the current working directory.
-    pub fn load() -> Result<Self, PaygError> {
+    ///
+    /// Returns `Ok(None)` if the file does not exist.
+    /// Returns `Err` if the file exists but is malformed.
+    pub fn load() -> Result<Option<Self>, PaygError> {
         let path = std::env::current_dir()?.join("payg.toml");
         if !path.exists() {
-            return Err(PaygError::ConfigError(
-                "payg.toml not found in current directory".to_string(),
-            ));
+            return Ok(None);
         }
         let contents = std::fs::read_to_string(&path)?;
-        toml::from_str(&contents).map_err(|e| PaygError::ConfigError(format!("payg.toml: {e}")))
+        let config: Self = toml::from_str(&contents)
+            .map_err(|e| PaygError::ConfigError(format!("payg.toml: {e}")))?;
+        Ok(Some(config))
     }
 }
 

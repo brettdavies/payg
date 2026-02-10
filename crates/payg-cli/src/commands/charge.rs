@@ -20,7 +20,7 @@ pub struct ChargeArgs {
 
 pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError> {
     let consumer = ConsumerConfig::load()?;
-    let project = ProjectConfig::load().ok();
+    let project = ProjectConfig::load()?;
 
     // Resolve amount: CLI arg > payg.toml default_price
     let amount = args
