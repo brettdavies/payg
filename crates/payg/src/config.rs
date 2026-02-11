@@ -108,11 +108,13 @@ impl ConsumerConfig {
 
     /// Resolve the network from: PAYG_NETWORK env var > config field > default (base-sepolia).
     pub fn resolve_network(&self) -> Result<&'static NetworkConfig, PaygError> {
-        let name = std::env::var("PAYG_NETWORK")
-            .ok()
-            .or_else(|| self.network.clone())
-            .unwrap_or_else(|| network::DEFAULT_NETWORK.name.to_string());
-        network::resolve_network_config(&name)
+        if let Ok(name) = std::env::var("PAYG_NETWORK") {
+            return network::resolve_network_config(&name);
+        }
+        if let Some(ref name) = self.network {
+            return network::resolve_network_config(name);
+        }
+        Ok(network::DEFAULT_NETWORK)
     }
 
     /// Parse the safety ceiling into a U256 with its token type.
@@ -157,7 +159,7 @@ fn validate_url(url: &str, field: &str) -> Result<(), PaygError> {
 
 /// Check if a URL points to localhost or 127.0.0.1 with exact host boundary.
 fn is_localhost_url(url: &str) -> bool {
-    for prefix in ["http://localhost", "http://127.0.0.1"] {
+    for prefix in ["http://localhost", "http://127.0.0.1", "http://[::1]"] {
         if let Some(rest) = url.strip_prefix(prefix) {
             // After the host, only '/', ':', or end-of-string is valid
             if rest.is_empty() || rest.starts_with('/') || rest.starts_with(':') {
@@ -184,6 +186,8 @@ mod tests {
         assert!(validate_url("http://localhost", "test").is_ok());
         assert!(validate_url("http://127.0.0.1:8545", "test").is_ok());
         assert!(validate_url("http://127.0.0.1", "test").is_ok());
+        assert!(validate_url("http://[::1]:8545", "test").is_ok());
+        assert!(validate_url("http://[::1]", "test").is_ok());
     }
 
     #[test]

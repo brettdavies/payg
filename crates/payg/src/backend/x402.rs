@@ -61,10 +61,7 @@ impl X402Backend {
             pay_to: request.recipient,
             amount: request.amount,
             max_timeout_seconds: MAX_TIMEOUT_SECONDS,
-            extra: Some(PaymentRequirementsExtra {
-                name: self.network.eip712_name.to_string(),
-                version: self.network.eip712_version.to_string(),
-            }),
+            extra: eip712_extra(self.network),
         };
 
         let payload = sign_erc3009_authorization(&self.signer, &params)
@@ -129,6 +126,14 @@ impl X402Backend {
     }
 }
 
+/// Build the EIP-712 extra parameters from a network config.
+fn eip712_extra(network: &NetworkConfig) -> Option<PaymentRequirementsExtra> {
+    Some(PaymentRequirementsExtra {
+        name: network.eip712_name.to_string(),
+        version: network.eip712_version.to_string(),
+    })
+}
+
 /// Build the V1 VerifyRequest (which is also the SettleRequest).
 fn build_settle_request(
     payload: ExactEvmPayload,
@@ -154,10 +159,7 @@ fn build_settle_request(
         pay_to: recipient,
         max_timeout_seconds: MAX_TIMEOUT_SECONDS,
         asset: backend.usdc_address,
-        extra: Some(PaymentRequirementsExtra {
-            name: backend.network.eip712_name.to_string(),
-            version: backend.network.eip712_version.to_string(),
-        }),
+        extra: eip712_extra(backend.network),
     };
 
     VerifyRequest {

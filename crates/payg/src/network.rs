@@ -14,6 +14,7 @@ pub struct NetworkConfig {
     pub name: &'static str,
     /// Human-readable name for CLI output (e.g. "Base Sepolia").
     pub display_name: &'static str,
+    pub is_testnet: bool,
     pub default_rpc_url: &'static str,
 }
 
@@ -24,6 +25,7 @@ pub const BASE_MAINNET: NetworkConfig = NetworkConfig {
     eip712_version: "2",
     name: "base",
     display_name: "Base",
+    is_testnet: false,
     default_rpc_url: "https://mainnet.base.org",
 };
 
@@ -34,6 +36,7 @@ pub const BASE_SEPOLIA: NetworkConfig = NetworkConfig {
     eip712_version: "2",
     name: "base-sepolia",
     display_name: "Base Sepolia",
+    is_testnet: true,
     default_rpc_url: "https://sepolia.base.org",
 };
 
@@ -75,5 +78,6 @@ mod tests {
     #[test]
     fn default_is_testnet() {
         assert_eq!(DEFAULT_NETWORK.name, "base-sepolia");
+        assert!(DEFAULT_NETWORK.is_testnet);
     }
 }

@@ -365,9 +365,9 @@ async fn e2e_charge_sepolia() {
 
     // Execute the charge
     let amount = alloy_primitives::U256::from(charge_amount);
-    let receipt = payg::charge_validated(amount, recipient, &config, network, signer)
+    let receipt = payg::charge_raw(amount, recipient, &config, network, signer)
         .await
-        .expect("charge_validated failed on base-sepolia");
+        .expect("charge_raw failed on base-sepolia");
 
     // Verify receipt
     assert!(

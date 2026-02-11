@@ -82,9 +82,9 @@ pub async fn run(
         return Ok(());
     }
 
-    // Use charge_validated since we already parsed and validated above
+    // Use charge_raw since we already parsed and validated above
     let receipt =
-        payg::charge_validated(parsed.amount, recipient_addr, &consumer, network, signer).await?;
+        payg::charge_raw(parsed.amount, recipient_addr, &consumer, network, signer).await?;
 
     match output {
         OutputFormat::Json => {

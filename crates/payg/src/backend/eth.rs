@@ -19,7 +19,7 @@ pub struct EthBackend {
 impl EthBackend {
     pub fn new(
         config: &ConsumerConfig,
-        network: &NetworkConfig,
+        network: &'static NetworkConfig,
         signer: PrivateKeySigner,
     ) -> Result<Self, PaygError> {
         Ok(Self {

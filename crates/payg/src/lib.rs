@@ -43,7 +43,7 @@ pub async fn charge(amount: &str, recipient: &str) -> Result<ChargeReceipt, Payg
 ///
 /// Parses and validates the amount and recipient, then executes the charge.
 /// For pre-validated inputs (e.g. when the CLI has already validated), use
-/// [`charge_validated`] to avoid redundant parsing.
+/// `charge_raw` to avoid redundant parsing.
 pub async fn charge_with_config(
     amount: &str,
     recipient: &str,
@@ -58,14 +58,18 @@ pub async fn charge_with_config(
 
     check_safety_ceiling(&parsed, amount, consumer_config)?;
 
-    charge_validated(parsed.amount, recipient, consumer_config, network, signer).await
+    charge_raw(parsed.amount, recipient, consumer_config, network, signer).await
 }
 
-/// Charge with pre-validated amount and recipient.
+/// Charge with pre-parsed amount and recipient, skipping validation.
 ///
-/// Skips parsing and safety ceiling checks. Use this when validation has
-/// already been performed (e.g. by the CLI before wallet load).
-pub async fn charge_validated(
+/// # Safety (not `unsafe`, but caller-beware)
+///
+/// This function skips amount parsing and safety ceiling checks. The caller
+/// is responsible for validating the amount against the safety ceiling before
+/// calling this function. Prefer [`charge_with_config`] for string inputs
+/// with automatic validation.
+pub async fn charge_raw(
     amount: alloy_primitives::U256,
     recipient: Address,
     consumer_config: &ConsumerConfig,
