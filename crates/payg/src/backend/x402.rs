@@ -13,7 +13,7 @@ use x402_types::proto::v1::{PaymentPayload, VerifyRequest, X402Version1};
 use crate::charge::{ChargeReceipt, ChargeRequest};
 use crate::config::ConsumerConfig;
 use crate::error::PaygError;
-use crate::{BASE_CHAIN_ID, BASE_USDC_ADDRESS};
+use crate::network::NetworkConfig;
 
 /// Maximum authorization validity window in seconds (2 minutes).
 const MAX_TIMEOUT_SECONDS: u64 = 120;
@@ -24,38 +24,44 @@ pub struct X402Backend {
     signer: PrivateKeySigner,
     usdc_address: Address,
     client: reqwest::Client,
+    network: &'static NetworkConfig,
 }
 
 impl X402Backend {
-    pub fn new(config: &ConsumerConfig, signer: PrivateKeySigner) -> Result<Self, PaygError> {
+    pub fn new(
+        config: &ConsumerConfig,
+        network: &'static NetworkConfig,
+        signer: PrivateKeySigner,
+    ) -> Result<Self, PaygError> {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
             .build()
             .map_err(|e| PaygError::Http(e.to_string()))?;
 
+        let usdc_address: Address = network
+            .usdc_address
+            .parse()
+            .map_err(|e| PaygError::ConfigError(format!("invalid USDC address: {e}")))?;
+
         Ok(Self {
             facilitator_url: config.facilitator_url()?,
             signer,
-            usdc_address: BASE_USDC_ADDRESS
-                .parse()
-                .expect("hardcoded USDC address is valid"),
+            usdc_address,
             client,
+            network,
         })
     }
 
     pub async fn charge(&self, request: &ChargeRequest) -> Result<ChargeReceipt, PaygError> {
         // 1. Sign EIP-3009 authorization
         let params = Eip3009SigningParams {
-            chain_id: BASE_CHAIN_ID,
+            chain_id: self.network.chain_id,
             asset_address: self.usdc_address,
             pay_to: request.recipient,
             amount: request.amount,
             max_timeout_seconds: MAX_TIMEOUT_SECONDS,
-            extra: Some(PaymentRequirementsExtra {
-                name: "USD Coin".to_string(),
-                version: "2".to_string(),
-            }),
+            extra: eip712_extra(self.network),
         };
 
         let payload = sign_erc3009_authorization(&self.signer, &params)
@@ -63,18 +69,14 @@ impl X402Backend {
             .map_err(|e| PaygError::PaymentFailed(format!("signing failed: {e}")))?;
 
         // 2. Build the V1 settle request
-        let settle_request = build_settle_request(
-            payload,
-            request.amount,
-            request.recipient,
-            self.usdc_address,
-        );
+        let settle_request = build_settle_request(payload, request.amount, request.recipient, self);
 
         let settle_json = serde_json::to_value(&settle_request)?;
 
         tracing::info!(
             facilitator = %self.facilitator_url,
             recipient = %request.recipient,
+            network = %self.network.name,
             "submitting payment to facilitator"
         );
 
@@ -124,23 +126,31 @@ impl X402Backend {
     }
 }
 
+/// Build the EIP-712 extra parameters from a network config.
+fn eip712_extra(network: &NetworkConfig) -> Option<PaymentRequirementsExtra> {
+    Some(PaymentRequirementsExtra {
+        name: network.eip712_name.to_string(),
+        version: network.eip712_version.to_string(),
+    })
+}
+
 /// Build the V1 VerifyRequest (which is also the SettleRequest).
 fn build_settle_request(
     payload: ExactEvmPayload,
     amount: U256,
     recipient: Address,
-    asset: Address,
+    backend: &X402Backend,
 ) -> VerifyRequest<PaymentPayload<ExactScheme, ExactEvmPayload>, PaymentRequirements> {
     let payment_payload = PaymentPayload {
         x402_version: X402Version1,
         scheme: ExactScheme,
-        network: "base".to_string(),
+        network: backend.network.name.to_string(),
         payload,
     };
 
     let payment_requirements = PaymentRequirements {
         scheme: ExactScheme,
-        network: "base".to_string(),
+        network: backend.network.name.to_string(),
         max_amount_required: amount,
         resource: "payg://charge".to_string(),
         description: "PAYG CLI charge".to_string(),
@@ -148,11 +158,8 @@ fn build_settle_request(
         output_schema: None,
         pay_to: recipient,
         max_timeout_seconds: MAX_TIMEOUT_SECONDS,
-        asset,
-        extra: Some(PaymentRequirementsExtra {
-            name: "USD Coin".to_string(),
-            version: "2".to_string(),
-        }),
+        asset: backend.usdc_address,
+        extra: eip712_extra(backend.network),
     };
 
     VerifyRequest {

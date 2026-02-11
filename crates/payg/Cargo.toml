@@ -30,3 +30,8 @@ reqwest = { version = "0.12", features = ["json"], optional = true }
 alloy-provider = { version = "1.6", optional = true }
 alloy-rpc-types-eth = { version = "1.6", optional = true }
 alloy-network = { version = "1.6", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.35", features = ["macros", "rt"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde_json = "1.0"

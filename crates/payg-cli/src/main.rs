@@ -5,6 +5,7 @@ use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
 use cli::{Cli, Command};
+use payg::NetworkConfig;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -13,28 +14,77 @@ async fn main() {
         .with_target(false)
         .init();
 
-    let cli = Cli::parse();
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(e) => {
+            // Help/version: print normally regardless of output format
+            if matches!(
+                e.kind(),
+                clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
+            ) {
+                e.exit();
+            }
+            // Argument errors: respect PAYG_OUTPUT env var for JSON
+            let is_json = std::env::var("PAYG_OUTPUT")
+                .map(|v| v.eq_ignore_ascii_case("json"))
+                .unwrap_or(false);
+            if is_json {
+                let err_json = serde_json::json!({
+                    "status": "error",
+                    "code": "INVALID_ARGS",
+                    "message": e.to_string(),
+                });
+                println!("{}", serde_json::to_string(&err_json).unwrap());
+                std::process::exit(2);
+            }
+            e.exit();
+        }
+    };
+
+    let network_str = cli.network.map(|n| n.as_str());
     let result = match cli.command {
-        Command::Init(args) => commands::init::run(args, cli.output).await,
-        Command::Charge(args) => commands::charge::run(args, cli.output).await,
-        Command::Address(args) => commands::address::run(args, cli.output).await,
-        Command::Balance(args) => commands::balance::run(args, cli.output).await,
+        Command::Init(args) => commands::init::run(args, cli.output, network_str).await,
+        Command::Charge(args) => commands::charge::run(args, cli.output, network_str).await,
+        Command::Address(args) => commands::address::run(args, cli.output, network_str).await,
+        Command::Balance(args) => commands::balance::run(args, cli.output, network_str).await,
     };
 
     if let Err(e) = result {
         let code = exit_code(&e);
         if cli.output == cli::OutputFormat::Json {
-            let err = serde_json::json!({
+            let mut err = serde_json::json!({
                 "status": "error",
                 "code": error_code(&e),
                 "message": e.to_string(),
             });
+            // Include network context when available
+            if let Some(name) = network_str {
+                err["network"] = serde_json::json!(name);
+            }
             println!("{}", serde_json::to_string(&err).unwrap());
         } else {
             eprintln!("error: {e}");
         }
         std::process::exit(code);
     }
+}
+
+/// Resolve network config: CLI flag > env var > config file > default.
+///
+/// Prints a warning to stderr when mainnet is selected (defense against
+/// accidental config/env tampering redirecting to real funds).
+pub fn resolve_network(
+    cli_network: Option<&str>,
+    consumer: &payg::ConsumerConfig,
+) -> Result<&'static NetworkConfig, payg::PaygError> {
+    let network = match cli_network {
+        Some(name) => payg::network::resolve_network_config(name)?,
+        None => consumer.resolve_network()?,
+    };
+    if !network.is_testnet {
+        eprintln!("WARNING: operating on Base MAINNET — real funds will be used");
+    }
+    Ok(network)
 }
 
 fn exit_code(err: &payg::PaygError) -> i32 {
