@@ -31,10 +31,14 @@ Requires Rust 1.88.0+.
 ### For end users
 
 ```sh
-# Create a wallet
+# Create a wallet (defaults to Base Sepolia testnet)
 payg init
 
+# Or target mainnet directly
+payg init --network base
+
 # Fund the address with USDC on Base (shown after init)
+# For testnet USDC: https://faucet.circle.com/
 # Then use any PAYG-enabled tool — payments happen automatically
 ```
 
@@ -70,13 +74,25 @@ payg charge
 
 ## CLI Commands
 
+### Global flags
+
+All commands accept these flags:
+
+| Flag | Env var | Default | Description |
+|------|---------|---------|-------------|
+| `--output` | `PAYG_OUTPUT` | `text` | Output format: `text`, `json` |
+| `--network` | `PAYG_NETWORK` | `base-sepolia` | Target network: `base`, `base-sepolia` |
+
+Precedence: CLI flag > env var > config file > default.
+
 ### `payg init`
 
 Create a new wallet at `~/.payg/keyfile.json`.
 
 ```sh
 payg init                              # Interactive (prompts for password)
-payg init --non-interactive            # Uses PAYG_KEY_PASSWORD env var
+payg init --network base               # Create wallet targeting mainnet
+payg init --non-interactive            # Requires PAYG_KEY_PASSWORD env var
 payg init --non-interactive --output json
 ```
 
@@ -87,6 +103,7 @@ Send a payment.
 ```sh
 payg charge "0.001 USDC" --recipient 0x1234...
 payg charge                            # Uses payg.toml defaults
+payg charge --network base             # Charge on mainnet
 payg charge --dry-run                  # Validate without sending
 payg charge --dry-run --output json    # Machine-readable validation
 ```
@@ -102,10 +119,11 @@ payg address --output json             # {"address": "0x..."}
 
 ### `payg balance`
 
-Check ETH and USDC balances on Base.
+Check ETH and USDC balances.
 
 ```sh
 payg balance
+payg balance --network base            # Check mainnet balances
 payg balance --output json
 ```
 
@@ -132,14 +150,16 @@ Created automatically by `payg init`:
 ```toml
 keyfile = "~/.payg/keyfile.json"
 max_charge = "1.00 USDC"
+network = "base-sepolia"
 ```
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `keyfile` | `~/.payg/keyfile.json` | Path to encrypted keyfile |
 | `max_charge` | `1.00 USDC` | Safety ceiling per charge |
+| `network` | `base-sepolia` | Default network (`base`, `base-sepolia`) |
 | `facilitator_url` | `https://x402.org/facilitator` | x402 facilitator endpoint |
-| `rpc_url` | `https://mainnet.base.org` | Base RPC endpoint |
+| `rpc_url` | Per-network default | Base RPC endpoint override |
 
 ### Environment variables
 
@@ -149,27 +169,33 @@ All config values can be overridden with environment variables:
 |----------|-------------|
 | `PAYG_PRIVATE_KEY` | Hex private key (skips keyfile, recommended for agents) |
 | `PAYG_KEY_PASSWORD` | Keyfile password (skips interactive prompt) |
+| `PAYG_NETWORK` | Target network: `base`, `base-sepolia` (same as `--network`) |
+| `PAYG_OUTPUT` | Output format: `text`, `json` (same as `--output`) |
 | `PAYG_MAX_CHARGE` | Safety ceiling override (e.g. `"5.00 USDC"`) |
 | `PAYG_RPC_URL` | Base RPC endpoint override |
 | `PAYG_FACILITATOR_URL` | x402 facilitator URL override |
+
+Precedence: CLI flag > env var > config file > default.
 
 **For CI/agents**, set `PAYG_PRIVATE_KEY` to avoid keyfile decryption overhead (200-500ms scrypt vs 10-30ms env var).
 
 ## Library API
 
 ```rust
-use payg::{charge, charge_with_config, ConsumerConfig, PaygError};
+use payg::{charge, charge_with_config, ConsumerConfig, NetworkConfig, PaygError};
 
 // Simple: loads config and wallet automatically
 payg::charge("0.001 USDC", "0xRECIPIENT").await?;
 
 // Pre-loaded: avoids redundant config/wallet loading in loops
 let config = ConsumerConfig::load()?;
+let network = config.resolve_network()?;
 let signer = payg::wallet::load_wallet(&config, Some("password"))?;
 let receipt = payg::charge_with_config(
     "0.001 USDC",
     "0xRECIPIENT",
     &config,
+    network,
     signer,
 ).await?;
 println!("tx: {}", receipt.tx_hash);
@@ -202,6 +228,7 @@ payg = { version = "0.1", features = ["eth"] }  # Add ETH backend
 |------|---------|
 | 0 | Success |
 | 1 | General error |
+| 2 | Invalid arguments |
 | 42 | Payment failed or exceeds safety ceiling |
 | 77 | Wallet error (missing or decryption failure) |
 | 78 | Configuration error |
@@ -210,18 +237,23 @@ payg = { version = "0.1", features = ["eth"] }  # Add ETH backend
 
 PAYG is designed for agent-native usage:
 
-- `--output json` on every command for structured output
-- All errors include a `code` field (`NO_WALLET`, `EXCEEDS_CEILING`, etc.)
+- `--output json` (or `PAYG_OUTPUT=json`) on every command for structured output
+- All JSON responses include `status`, `network`, and `is_testnet` fields
+- All errors include a `code` field (`NO_WALLET`, `EXCEEDS_CEILING`, `INVALID_ARGS`, etc.)
 - `PAYG_PRIVATE_KEY` env var for fast, non-interactive wallet access
+- `PAYG_NETWORK` env var to select network without CLI flags
 - `--dry-run` to validate charges before sending
 - Semantic exit codes for programmatic error handling
 
 ```sh
 # Agent workflow
 export PAYG_PRIVATE_KEY=0x...
-payg balance --output json
-payg charge "0.001 USDC" --recipient 0x... --dry-run --output json
-payg charge "0.001 USDC" --recipient 0x... --output json
+export PAYG_OUTPUT=json
+export PAYG_NETWORK=base-sepolia
+
+payg balance
+payg charge "0.001 USDC" --recipient 0x... --dry-run
+payg charge "0.001 USDC" --recipient 0x...
 ```
 
 ## Security
