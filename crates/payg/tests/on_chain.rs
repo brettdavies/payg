@@ -11,6 +11,10 @@
 //!
 //! Run e2e charge test (requires PAYG_PRIVATE_KEY with funded testnet wallet):
 //!   cargo test e2e -- --ignored
+//!
+//! Environment variables:
+//!   PAYG_PRIVATE_KEY    - Private key for e2e charge test (hex, no 0x prefix)
+//!   PAYG_TEST_RPC_URL   - Override default RPC endpoint for all network tests
 
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -294,7 +298,7 @@ const E2E_MAX_CHARGE_USDC: u64 = 10_000;
 async fn e2e_charge_sepolia() {
     // Gate 1: Wallet — skip if PAYG_PRIVATE_KEY not set
     if std::env::var("PAYG_PRIVATE_KEY").is_err() {
-        eprintln!("Skipping e2e_charge_sepolia: PAYG_PRIVATE_KEY not set");
+        eprintln!("SKIP: e2e_charge_sepolia: PAYG_PRIVATE_KEY not set");
         eprintln!("To run: export PAYG_PRIVATE_KEY=<base-sepolia-funded-key>");
         eprintln!("Get testnet USDC from https://faucet.circle.com/");
         eprintln!("(no ETH needed — x402 facilitator pays gas)");
@@ -310,9 +314,7 @@ async fn e2e_charge_sepolia() {
     // Gate 2: Facilitator health check — skip if unreachable
     let facilitator_url = payg::DEFAULT_FACILITATOR_URL;
     if CLIENT.get(facilitator_url).send().await.is_err() {
-        eprintln!(
-            "Skipping e2e_charge_sepolia: x402 facilitator at {facilitator_url} is unreachable"
-        );
+        eprintln!("SKIP: e2e_charge_sepolia: x402 facilitator at {facilitator_url} is unreachable");
         return;
     }
 
@@ -349,7 +351,7 @@ async fn e2e_charge_sepolia() {
 
     if balance < charge_amount {
         eprintln!(
-            "Skipping e2e_charge_sepolia: insufficient USDC balance ({balance} < {charge_amount})"
+            "SKIP: e2e_charge_sepolia: insufficient USDC balance ({balance} < {charge_amount})"
         );
         eprintln!("Get testnet USDC from https://faucet.circle.com/");
         eprintln!("(no ETH needed — x402 facilitator pays gas)");
