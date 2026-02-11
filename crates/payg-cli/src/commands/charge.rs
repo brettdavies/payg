@@ -18,8 +18,13 @@ pub struct ChargeArgs {
     dry_run: bool,
 }
 
-pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError> {
+pub async fn run(
+    args: ChargeArgs,
+    output: OutputFormat,
+    cli_network: Option<&str>,
+) -> Result<(), PaygError> {
     let consumer = ConsumerConfig::load()?;
+    let network = crate::resolve_network(cli_network, &consumer)?;
     let project = ProjectConfig::load()?;
 
     // Resolve amount: CLI arg > payg.toml default_price
@@ -44,9 +49,12 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
             )
         })?;
 
-    // Validate ceiling before expensive wallet load
+    // Validate before expensive wallet load (fail fast before scrypt decryption)
     let parsed = payg::pricing::parse_price(&amount)?;
     payg::check_safety_ceiling(&parsed, &amount, &consumer)?;
+    let recipient_addr: alloy_primitives::Address = recipient
+        .parse()
+        .map_err(|e| PaygError::ConfigError(format!("invalid recipient address: {e}")))?;
 
     // Load wallet once
     let signer = super::wallet_helper::load_wallet_interactive(&consumer)?;
@@ -59,19 +67,23 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
                     "amount": amount,
                     "recipient": recipient,
                     "wallet": format!("{}", signer.address()),
+                    "network": network.name,
+                    "is_testnet": network.is_testnet,
                 });
                 println!("{}", serde_json::to_string(&result).unwrap());
             }
             OutputFormat::Text => {
                 println!("Dry run: would charge {amount} to {recipient}");
-                println!("Wallet: {}", signer.address());
+                println!("Wallet:  {}", signer.address());
+                println!("Network: {} ({})", network.display_name, network.name);
             }
         }
         return Ok(());
     }
 
-    // Execute the charge with pre-loaded config and signer (no double loading)
-    let receipt = payg::charge_with_config(&amount, &recipient, &consumer, signer).await?;
+    // Use charge_raw since we already parsed and validated above
+    let receipt =
+        payg::charge_raw(parsed.amount, recipient_addr, &consumer, network, signer).await?;
 
     match output {
         OutputFormat::Json => {
@@ -80,11 +92,14 @@ pub async fn run(args: ChargeArgs, output: OutputFormat) -> Result<(), PaygError
                 "tx_hash": receipt.tx_hash,
                 "amount": amount,
                 "recipient": recipient,
+                "network": network.name,
+                "is_testnet": network.is_testnet,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }
         OutputFormat::Text => {
             println!("Charged {amount} -> {recipient} (tx: {})", receipt.tx_hash);
+            println!("Network: {} ({})", network.display_name, network.name);
         }
     }
 

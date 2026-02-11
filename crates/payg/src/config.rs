@@ -4,6 +4,7 @@ use alloy_primitives::U256;
 use serde::Deserialize;
 
 use crate::error::PaygError;
+use crate::network::{self, NetworkConfig};
 use crate::{DEFAULT_FACILITATOR_URL, DEFAULT_SAFETY_CEILING_USDC};
 
 /// Project-level config from `payg.toml` in the current working directory.
@@ -30,6 +31,8 @@ pub struct ConsumerConfig {
     pub facilitator_url: Option<String>,
     /// Base RPC URL for ETH backend and balance queries.
     pub rpc_url: Option<String>,
+    /// Network name ("base" or "base-sepolia").
+    pub network: Option<String>,
 }
 
 impl ProjectConfig {
@@ -92,15 +95,31 @@ impl ConsumerConfig {
         Ok(url)
     }
 
-    /// Base RPC URL, with env var override. Validates URL scheme.
-    pub fn rpc_url(&self) -> Result<String, PaygError> {
+    /// Base RPC URL, with env var override. Falls back to network default.
+    pub fn rpc_url(&self, network: &NetworkConfig) -> Result<String, PaygError> {
         let url = std::env::var("PAYG_RPC_URL").unwrap_or_else(|_| {
             self.rpc_url
                 .clone()
-                .unwrap_or_else(|| "https://mainnet.base.org".to_string())
+                .unwrap_or_else(|| network.default_rpc_url.to_string())
         });
         validate_url(&url, "rpc_url")?;
         Ok(url)
+    }
+
+    /// Resolve the network from: PAYG_NETWORK env var > config field > default (base-sepolia).
+    ///
+    /// Note: When called via the CLI, the `--network` flag is handled by clap
+    /// before this method runs. The CLI's `resolve_network()` in `main.rs` calls
+    /// this only when no CLI flag was provided, so the full precedence chain is:
+    /// `--network` flag > `PAYG_NETWORK` env var > config `network` field > default.
+    pub fn resolve_network(&self) -> Result<&'static NetworkConfig, PaygError> {
+        if let Ok(name) = std::env::var("PAYG_NETWORK") {
+            return network::resolve_network_config(&name);
+        }
+        if let Some(ref name) = self.network {
+            return network::resolve_network_config(name);
+        }
+        Ok(network::DEFAULT_NETWORK)
     }
 
     /// Parse the safety ceiling into a U256 with its token type.
@@ -133,11 +152,57 @@ fn validate_url(url: &str, field: &str) -> Result<(), PaygError> {
     if url.starts_with("https://") {
         return Ok(());
     }
-    // Allow HTTP for local development
-    if url.starts_with("http://localhost") || url.starts_with("http://127.0.0.1") {
+    // Allow HTTP for local development only — require exact host boundary
+    // to prevent bypass via http://localhost.evil.com or http://127.0.0.1.evil.com
+    if is_localhost_url(url) {
         return Ok(());
     }
     Err(PaygError::ConfigError(format!(
         "{field} must use https:// (got: {url})"
     )))
+}
+
+/// Check if a URL points to localhost or 127.0.0.1 with exact host boundary.
+fn is_localhost_url(url: &str) -> bool {
+    for prefix in ["http://localhost", "http://127.0.0.1", "http://[::1]"] {
+        if let Some(rest) = url.strip_prefix(prefix) {
+            // After the host, only '/', ':', or end-of-string is valid
+            if rest.is_empty() || rest.starts_with('/') || rest.starts_with(':') {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_url_accepts_https() {
+        assert!(validate_url("https://x402.org/facilitator", "test").is_ok());
+    }
+
+    #[test]
+    fn validate_url_accepts_localhost() {
+        assert!(validate_url("http://localhost:8545", "test").is_ok());
+        assert!(validate_url("http://localhost/path", "test").is_ok());
+        assert!(validate_url("http://localhost", "test").is_ok());
+        assert!(validate_url("http://127.0.0.1:8545", "test").is_ok());
+        assert!(validate_url("http://127.0.0.1", "test").is_ok());
+        assert!(validate_url("http://[::1]:8545", "test").is_ok());
+        assert!(validate_url("http://[::1]", "test").is_ok());
+    }
+
+    #[test]
+    fn validate_url_rejects_localhost_bypass() {
+        assert!(validate_url("http://localhost.evil.com", "test").is_err());
+        assert!(validate_url("http://127.0.0.1.evil.com", "test").is_err());
+    }
+
+    #[test]
+    fn validate_url_rejects_http() {
+        assert!(validate_url("http://example.com", "test").is_err());
+    }
 }

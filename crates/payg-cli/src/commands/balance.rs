@@ -3,19 +3,24 @@ use std::time::Duration;
 use alloy_primitives::U256;
 use clap::Args;
 
-use payg::{BASE_USDC_ADDRESS, ConsumerConfig, PaygError};
+use payg::{ConsumerConfig, PaygError};
 
 use crate::cli::OutputFormat;
 
 #[derive(Args)]
 pub struct BalanceArgs;
 
-pub async fn run(_args: BalanceArgs, output: OutputFormat) -> Result<(), PaygError> {
+pub async fn run(
+    _args: BalanceArgs,
+    output: OutputFormat,
+    cli_network: Option<&str>,
+) -> Result<(), PaygError> {
     let config = ConsumerConfig::load()?;
+    let network = crate::resolve_network(cli_network, &config)?;
     let signer = super::wallet_helper::load_wallet_interactive(&config)?;
     let address = signer.address();
 
-    let rpc_url = config.rpc_url()?;
+    let rpc_url = config.rpc_url(network)?;
     let address_str = format!("{address}");
 
     let client = reqwest::Client::builder()
@@ -27,7 +32,7 @@ pub async fn run(_args: BalanceArgs, output: OutputFormat) -> Result<(), PaygErr
     // Query ETH and USDC balances in parallel
     let (eth_balance, usdc_balance) = tokio::try_join!(
         query_eth_balance(&client, &rpc_url, &address_str),
-        query_erc20_balance(&client, &rpc_url, BASE_USDC_ADDRESS, &address_str),
+        query_erc20_balance(&client, &rpc_url, network.usdc_address, &address_str),
     )?;
 
     let eth_formatted = format_token_amount(eth_balance, 18);
@@ -36,20 +41,22 @@ pub async fn run(_args: BalanceArgs, output: OutputFormat) -> Result<(), PaygErr
     match output {
         OutputFormat::Json => {
             let result = serde_json::json!({
+                "status": "ok",
                 "address": address_str,
                 "eth": eth_formatted,
                 "eth_wei": eth_balance.to_string(),
                 "usdc": usdc_formatted,
                 "usdc_raw": usdc_balance.to_string(),
-                "chain": "base",
+                "network": network.name,
+                "is_testnet": network.is_testnet,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }
         OutputFormat::Text => {
             println!("Wallet {address}:");
-            println!("  ETH:  {eth_formatted}");
-            println!("  USDC: {usdc_formatted}");
-            println!("  Chain: Base");
+            println!("  ETH:     {eth_formatted}");
+            println!("  USDC:    {usdc_formatted}");
+            println!("  Network: {} ({})", network.display_name, network.name);
         }
     }
 

@@ -8,6 +8,7 @@ use alloy_signer_local::PrivateKeySigner;
 use crate::charge::{ChargeReceipt, ChargeRequest};
 use crate::config::ConsumerConfig;
 use crate::error::PaygError;
+use crate::network::NetworkConfig;
 
 /// Direct ETH transfer backend using alloy-rs on Base L2.
 pub struct EthBackend {
@@ -16,9 +17,13 @@ pub struct EthBackend {
 }
 
 impl EthBackend {
-    pub fn new(config: &ConsumerConfig, signer: PrivateKeySigner) -> Result<Self, PaygError> {
+    pub fn new(
+        config: &ConsumerConfig,
+        network: &'static NetworkConfig,
+        signer: PrivateKeySigner,
+    ) -> Result<Self, PaygError> {
         Ok(Self {
-            rpc_url: config.rpc_url()?,
+            rpc_url: config.rpc_url(network)?,
             signer,
         })
     }
