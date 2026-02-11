@@ -11,7 +11,12 @@
 //!
 //! Run e2e charge test (requires PAYG_PRIVATE_KEY with funded testnet wallet):
 //!   cargo test e2e -- --ignored
+//!
+//! Environment variables:
+//!   PAYG_PRIVATE_KEY    - Private key for e2e charge test (hex, no 0x prefix)
+//!   PAYG_TEST_RPC_URL   - Override default RPC endpoint for all network tests
 
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use payg::network::{BASE_MAINNET, BASE_SEPOLIA, NetworkConfig};
@@ -20,23 +25,18 @@ use payg::network::{BASE_MAINNET, BASE_SEPOLIA, NetworkConfig};
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn build_client() -> reqwest::Client {
+/// Shared HTTP client for all tests. Eliminates redundant TLS handshakes
+/// across 12+ parallel tests hitting 2 RPC endpoints.
+static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .timeout(Duration::from_secs(15))
         .connect_timeout(Duration::from_secs(5))
         .build()
         .expect("failed to build HTTP client")
-}
+});
 
 fn rpc_url_for(network: &NetworkConfig) -> String {
-    let per_network_key = match network.name {
-        "base-sepolia" => "PAYG_TEST_RPC_URL_SEPOLIA",
-        "base" => "PAYG_TEST_RPC_URL_MAINNET",
-        _ => "PAYG_TEST_RPC_URL",
-    };
-    std::env::var(per_network_key)
-        .or_else(|_| std::env::var("PAYG_TEST_RPC_URL"))
-        .unwrap_or_else(|_| network.default_rpc_url.to_string())
+    std::env::var("PAYG_TEST_RPC_URL").unwrap_or_else(|_| network.default_rpc_url.to_string())
 }
 
 /// Send a JSON-RPC request and return the `result` field.
@@ -128,9 +128,8 @@ fn decode_abi_uint8(hex: &str) -> u8 {
 // ---------------------------------------------------------------------------
 
 async fn verify_chain_id(network: &payg::network::NetworkConfig) {
-    let client = build_client();
     let rpc_url = rpc_url_for(network);
-    let result = rpc_call(&client, &rpc_url, "eth_chainId", serde_json::json!([])).await;
+    let result = rpc_call(&CLIENT, &rpc_url, "eth_chainId", serde_json::json!([])).await;
     let hex = result.as_str().expect("eth_chainId returned non-string");
     let chain_id = u64::from_str_radix(hex.trim_start_matches("0x"), 16).expect("bad chain_id hex");
     assert_eq!(
@@ -141,10 +140,9 @@ async fn verify_chain_id(network: &payg::network::NetworkConfig) {
 }
 
 async fn verify_usdc_contract_exists(network: &payg::network::NetworkConfig) {
-    let client = build_client();
     let rpc_url = rpc_url_for(network);
     let result = rpc_call(
-        &client,
+        &CLIENT,
         &rpc_url,
         "eth_getCode",
         serde_json::json!([network.usdc_address, "latest"]),
@@ -160,9 +158,8 @@ async fn verify_usdc_contract_exists(network: &payg::network::NetworkConfig) {
 }
 
 async fn verify_usdc_decimals(network: &payg::network::NetworkConfig) {
-    let client = build_client();
     let rpc_url = rpc_url_for(network);
-    let hex = eth_call_hex(&client, &rpc_url, network.usdc_address, "0x313ce567").await;
+    let hex = eth_call_hex(&CLIENT, &rpc_url, network.usdc_address, "0x313ce567").await;
     assert_eq!(
         decode_abi_uint8(&hex),
         6,
@@ -172,9 +169,8 @@ async fn verify_usdc_decimals(network: &payg::network::NetworkConfig) {
 }
 
 async fn verify_usdc_name(network: &payg::network::NetworkConfig) {
-    let client = build_client();
     let rpc_url = rpc_url_for(network);
-    let hex = eth_call_hex(&client, &rpc_url, network.usdc_address, "0x06fdde03").await;
+    let hex = eth_call_hex(&CLIENT, &rpc_url, network.usdc_address, "0x06fdde03").await;
     let name = decode_abi_string(&hex);
     assert_eq!(
         name, network.eip712_name,
@@ -184,9 +180,8 @@ async fn verify_usdc_name(network: &payg::network::NetworkConfig) {
 }
 
 async fn verify_usdc_version(network: &payg::network::NetworkConfig) {
-    let client = build_client();
     let rpc_url = rpc_url_for(network);
-    let hex = eth_call_hex(&client, &rpc_url, network.usdc_address, "0x54fd4d50").await;
+    let hex = eth_call_hex(&CLIENT, &rpc_url, network.usdc_address, "0x54fd4d50").await;
     let version = decode_abi_string(&hex);
     assert_eq!(
         version, network.eip712_version,
@@ -196,9 +191,8 @@ async fn verify_usdc_version(network: &payg::network::NetworkConfig) {
 }
 
 async fn verify_rpc_reachable(network: &payg::network::NetworkConfig) {
-    let client = build_client();
     let rpc_url = rpc_url_for(network);
-    let result = rpc_call(&client, &rpc_url, "eth_blockNumber", serde_json::json!([])).await;
+    let result = rpc_call(&CLIENT, &rpc_url, "eth_blockNumber", serde_json::json!([])).await;
     let hex = result
         .as_str()
         .expect("eth_blockNumber returned non-string");
@@ -295,33 +289,48 @@ async fn mainnet_rpc_is_reachable() {
 // End-to-end charge on Base Sepolia (requires funded wallet)
 // ---------------------------------------------------------------------------
 
+/// Maximum charge amount for e2e tests (in USDC base units, 6 decimals).
+/// 0.01 USDC absolute ceiling. DO NOT increase without security review.
+const E2E_MAX_CHARGE_USDC: u64 = 10_000;
+
 #[tokio::test]
 #[ignore]
 async fn e2e_charge_sepolia() {
-    // Gate on PAYG_PRIVATE_KEY — skip if not set
-    let Ok(_key) = std::env::var("PAYG_PRIVATE_KEY") else {
-        eprintln!("Skipping e2e_charge_sepolia: PAYG_PRIVATE_KEY not set");
+    // Gate 1: Wallet — skip if PAYG_PRIVATE_KEY not set
+    if std::env::var("PAYG_PRIVATE_KEY").is_err() {
+        eprintln!("SKIP: e2e_charge_sepolia: PAYG_PRIVATE_KEY not set");
         eprintln!("To run: export PAYG_PRIVATE_KEY=<base-sepolia-funded-key>");
         eprintln!("Get testnet USDC from https://faucet.circle.com/");
+        eprintln!("(no ETH needed — x402 facilitator pays gas)");
         return;
-    };
+    }
+
+    let network = &BASE_SEPOLIA;
+    assert!(
+        network.is_testnet,
+        "e2e charge tests MUST run on testnet only"
+    );
+
+    // Gate 2: Facilitator health check — skip if unreachable
+    let facilitator_url = payg::DEFAULT_FACILITATOR_URL;
+    if CLIENT.get(facilitator_url).send().await.is_err() {
+        eprintln!("SKIP: e2e_charge_sepolia: x402 facilitator at {facilitator_url} is unreachable");
+        return;
+    }
 
     // Load wallet and config using the library's own machinery
     let config = payg::ConsumerConfig::default();
-    let network = &BASE_SEPOLIA;
-    let password: Option<&str> = None;
-    let signer = payg::wallet::load_wallet(&config, password)
+    let signer = payg::wallet::load_wallet(&config, None)
         .expect("failed to load wallet from PAYG_PRIVATE_KEY");
 
     let recipient = signer.address(); // charge to self to avoid losing testnet USDC
 
-    // Check USDC balance before charging
-    let client = build_client();
+    // Gate 3: USDC balance — skip if insufficient
     let rpc_url = rpc_url_for(network);
     let wallet_padded = format!("{:0>64}", format!("{:x}", recipient));
     let data = format!("0x70a08231{wallet_padded}");
     let balance_result = rpc_call(
-        &client,
+        &CLIENT,
         &rpc_url,
         "eth_call",
         serde_json::json!([{"to": network.usdc_address, "data": data}, "latest"]),
@@ -331,15 +340,21 @@ async fn e2e_charge_sepolia() {
         .as_str()
         .expect("balanceOf returned non-string")
         .trim_start_matches("0x");
-    let balance = u64::from_str_radix(balance_hex.trim_start_matches('0'), 16).unwrap_or(0);
+    let balance = u64::from_str_radix(balance_hex, 16).unwrap_or(0);
 
     // 0.001 USDC = 1000 units (6 decimals)
     let charge_amount = 1000u64;
+    assert!(
+        charge_amount <= E2E_MAX_CHARGE_USDC,
+        "test charge {charge_amount} exceeds test ceiling {E2E_MAX_CHARGE_USDC}"
+    );
+
     if balance < charge_amount {
         eprintln!(
-            "Skipping e2e_charge_sepolia: insufficient USDC balance ({balance} < {charge_amount})"
+            "SKIP: e2e_charge_sepolia: insufficient USDC balance ({balance} < {charge_amount})"
         );
         eprintln!("Get testnet USDC from https://faucet.circle.com/");
+        eprintln!("(no ETH needed — x402 facilitator pays gas)");
         return;
     }
 
@@ -349,7 +364,7 @@ async fn e2e_charge_sepolia() {
         .await
         .expect("charge_raw failed on base-sepolia");
 
-    // Verify receipt
+    // Verify receipt format
     assert!(
         receipt.tx_hash.starts_with("0x"),
         "tx_hash should start with 0x, got: {}",
@@ -362,6 +377,19 @@ async fn e2e_charge_sepolia() {
         receipt.tx_hash.len(),
         receipt.tx_hash
     );
+
+    // Verify on-chain confirmation
+    let tx_receipt = rpc_call(
+        &CLIENT,
+        &rpc_url,
+        "eth_getTransactionReceipt",
+        serde_json::json!([&receipt.tx_hash]),
+    )
+    .await;
+    let status = tx_receipt["status"]
+        .as_str()
+        .expect("transaction receipt missing status field");
+    assert_eq!(status, "0x1", "on-chain tx did not succeed");
 
     eprintln!("e2e charge succeeded: tx_hash={}", receipt.tx_hash);
     eprintln!(
