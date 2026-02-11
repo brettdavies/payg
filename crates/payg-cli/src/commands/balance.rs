@@ -48,6 +48,7 @@ pub async fn run(
                 "usdc": usdc_formatted,
                 "usdc_raw": usdc_balance.to_string(),
                 "network": network.name,
+                "is_testnet": network.is_testnet,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }

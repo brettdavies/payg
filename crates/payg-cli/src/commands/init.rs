@@ -9,7 +9,7 @@ use crate::cli::OutputFormat;
 
 #[derive(Args)]
 pub struct InitArgs {
-    /// Run without interactive prompts (uses env vars)
+    /// Run without interactive prompts (requires PAYG_KEY_PASSWORD env var)
     #[arg(long)]
     non_interactive: bool,
 }
@@ -140,6 +140,7 @@ pub async fn run(
                 "keyfile": "~/.payg/keyfile.json",
                 "config": "~/.payg/config.toml",
                 "network": network.name,
+                "is_testnet": network.is_testnet,
                 "faucet_url": faucet_url,
             });
             println!("{}", serde_json::to_string(&result).unwrap());

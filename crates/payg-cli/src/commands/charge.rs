@@ -68,6 +68,7 @@ pub async fn run(
                     "recipient": recipient,
                     "wallet": format!("{}", signer.address()),
                     "network": network.name,
+                    "is_testnet": network.is_testnet,
                 });
                 println!("{}", serde_json::to_string(&result).unwrap());
             }
@@ -92,6 +93,7 @@ pub async fn run(
                 "amount": amount,
                 "recipient": recipient,
                 "network": network.name,
+                "is_testnet": network.is_testnet,
             });
             println!("{}", serde_json::to_string(&result).unwrap());
         }

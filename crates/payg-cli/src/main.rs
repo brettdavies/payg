@@ -14,7 +14,33 @@ async fn main() {
         .with_target(false)
         .init();
 
-    let cli = Cli::parse();
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(e) => {
+            // Help/version: print normally regardless of output format
+            if matches!(
+                e.kind(),
+                clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
+            ) {
+                e.exit();
+            }
+            // Argument errors: respect PAYG_OUTPUT env var for JSON
+            let is_json = std::env::var("PAYG_OUTPUT")
+                .map(|v| v.eq_ignore_ascii_case("json"))
+                .unwrap_or(false);
+            if is_json {
+                let err_json = serde_json::json!({
+                    "status": "error",
+                    "code": "INVALID_ARGS",
+                    "message": e.to_string(),
+                });
+                println!("{}", serde_json::to_string(&err_json).unwrap());
+                std::process::exit(2);
+            }
+            e.exit();
+        }
+    };
+
     let network_str = cli.network.map(|n| n.as_str());
     let result = match cli.command {
         Command::Init(args) => commands::init::run(args, cli.output, network_str).await,
@@ -26,11 +52,15 @@ async fn main() {
     if let Err(e) = result {
         let code = exit_code(&e);
         if cli.output == cli::OutputFormat::Json {
-            let err = serde_json::json!({
+            let mut err = serde_json::json!({
                 "status": "error",
                 "code": error_code(&e),
                 "message": e.to_string(),
             });
+            // Include network context when available
+            if let Some(name) = network_str {
+                err["network"] = serde_json::json!(name);
+            }
             println!("{}", serde_json::to_string(&err).unwrap());
         } else {
             eprintln!("error: {e}");

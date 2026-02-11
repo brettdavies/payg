@@ -107,6 +107,11 @@ impl ConsumerConfig {
     }
 
     /// Resolve the network from: PAYG_NETWORK env var > config field > default (base-sepolia).
+    ///
+    /// Note: When called via the CLI, the `--network` flag is handled by clap
+    /// before this method runs. The CLI's `resolve_network()` in `main.rs` calls
+    /// this only when no CLI flag was provided, so the full precedence chain is:
+    /// `--network` flag > `PAYG_NETWORK` env var > config `network` field > default.
     pub fn resolve_network(&self) -> Result<&'static NetworkConfig, PaygError> {
         if let Ok(name) = std::env::var("PAYG_NETWORK") {
             return network::resolve_network_config(&name);
