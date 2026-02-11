@@ -41,6 +41,7 @@ pub async fn run(
     match output {
         OutputFormat::Json => {
             let result = serde_json::json!({
+                "status": "ok",
                 "address": address_str,
                 "eth": eth_formatted,
                 "eth_wei": eth_balance.to_string(),
@@ -54,7 +55,7 @@ pub async fn run(
             println!("Wallet {address}:");
             println!("  ETH:     {eth_formatted}");
             println!("  USDC:    {usdc_formatted}");
-            println!("  Network: {}", network.display_name);
+            println!("  Network: {} ({})", network.display_name, network.name);
         }
     }
 

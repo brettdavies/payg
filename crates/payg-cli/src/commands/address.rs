@@ -20,6 +20,7 @@ pub async fn run(
     match output {
         OutputFormat::Json => {
             let result = serde_json::json!({
+                "status": "ok",
                 "address": format!("{address}"),
                 "network": network.name,
             });
@@ -27,6 +28,7 @@ pub async fn run(
         }
         OutputFormat::Text => {
             println!("{address}");
+            println!("Network: {} ({})", network.display_name, network.name);
         }
     }
 

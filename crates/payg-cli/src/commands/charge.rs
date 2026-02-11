@@ -62,14 +62,12 @@ pub async fn run(
     if args.dry_run {
         match output {
             OutputFormat::Json => {
-                let rpc_url = consumer.rpc_url(network)?;
                 let result = serde_json::json!({
                     "status": "dry_run",
                     "amount": amount,
                     "recipient": recipient,
                     "wallet": format!("{}", signer.address()),
                     "network": network.name,
-                    "rpc_url": rpc_url,
                 });
                 println!("{}", serde_json::to_string(&result).unwrap());
             }
@@ -99,6 +97,7 @@ pub async fn run(
         }
         OutputFormat::Text => {
             println!("Charged {amount} -> {recipient} (tx: {})", receipt.tx_hash);
+            println!("Network: {} ({})", network.display_name, network.name);
         }
     }
 

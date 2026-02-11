@@ -51,7 +51,7 @@ pub fn resolve_network(
         Some(name) => payg::network::resolve_network_config(name)?,
         None => consumer.resolve_network()?,
     };
-    if network.name == "base" {
+    if !network.is_testnet {
         eprintln!("WARNING: operating on Base MAINNET — real funds will be used");
     }
     Ok(network)

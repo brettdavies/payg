@@ -26,6 +26,9 @@ pub async fn run(
         Some(name) => payg::network::resolve_network_config(name)?,
         None => payg::network::DEFAULT_NETWORK,
     };
+    if !network.is_testnet {
+        eprintln!("WARNING: operating on Base MAINNET — real funds will be used");
+    }
 
     let home = payg::config::home_dir()?;
 
@@ -126,7 +129,7 @@ pub async fn run(
 
     match output {
         OutputFormat::Json => {
-            let faucet_url = if network.name == "base-sepolia" {
+            let faucet_url = if network.is_testnet {
                 Some("https://faucet.circle.com/")
             } else {
                 None
@@ -148,7 +151,7 @@ pub async fn run(
             println!("Config:  ~/.payg/config.toml");
             println!("Network: {} ({})", network.display_name, network.name);
             println!();
-            if network.name == "base-sepolia" {
+            if network.is_testnet {
                 println!("Get testnet USDC from https://faucet.circle.com/");
             } else {
                 println!("Fund this address with USDC on Base to start using PAYG.");

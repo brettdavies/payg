@@ -7,14 +7,14 @@ use crate::commands::{address, balance, charge, init};
     name = "payg",
     version,
     about = "Pay-as-you-go crypto micropayments for CLI tools",
-    after_help = "EXIT CODES:\n  0   Success\n  1   General error\n  42  Payment failed or exceeds safety ceiling\n  77  Wallet error (missing or decryption failure)\n  78  Configuration error"
+    after_help = "EXIT CODES:\n  0   Success\n  1   General error\n  2   Invalid arguments (from argument parser)\n  42  Payment failed or exceeds safety ceiling\n  77  Wallet error (missing or decryption failure)\n  78  Configuration error"
 )]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
 
     /// Output format
-    #[arg(long, global = true, default_value = "text")]
+    #[arg(long, global = true, default_value = "text", env = "PAYG_OUTPUT")]
     pub output: OutputFormat,
 
     /// Target network
