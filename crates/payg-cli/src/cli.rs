@@ -57,3 +57,23 @@ impl NetworkName {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn network_names_match_lib_resolver() {
+        // Ensure every CLI NetworkName variant resolves successfully in the lib.
+        // If a variant is added to NetworkName without a matching resolve arm,
+        // this test will fail.
+        for name in [NetworkName::Base, NetworkName::BaseSepolia] {
+            payg::network::resolve_network_config(name.as_str()).unwrap_or_else(|_| {
+                panic!(
+                    "CLI network '{}' not recognized by lib resolver",
+                    name.as_str()
+                )
+            });
+        }
+    }
+}

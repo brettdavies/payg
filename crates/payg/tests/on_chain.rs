@@ -29,7 +29,14 @@ fn build_client() -> reqwest::Client {
 }
 
 fn rpc_url_for(network: &NetworkConfig) -> String {
-    std::env::var("PAYG_TEST_RPC_URL").unwrap_or_else(|_| network.default_rpc_url.to_string())
+    let per_network_key = match network.name {
+        "base-sepolia" => "PAYG_TEST_RPC_URL_SEPOLIA",
+        "base" => "PAYG_TEST_RPC_URL_MAINNET",
+        _ => "PAYG_TEST_RPC_URL",
+    };
+    std::env::var(per_network_key)
+        .or_else(|_| std::env::var("PAYG_TEST_RPC_URL"))
+        .unwrap_or_else(|_| network.default_rpc_url.to_string())
 }
 
 /// Send a JSON-RPC request and return the `result` field.
@@ -117,92 +124,80 @@ fn decode_abi_uint8(hex: &str) -> u8 {
 }
 
 // ---------------------------------------------------------------------------
-// Base Sepolia Tests
+// Parameterised verify helpers (one per assertion, shared by both networks)
 // ---------------------------------------------------------------------------
 
-#[tokio::test]
-#[ignore]
-async fn sepolia_chain_id_matches() {
+async fn verify_chain_id(network: &payg::network::NetworkConfig) {
     let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_SEPOLIA);
-
+    let rpc_url = rpc_url_for(network);
     let result = rpc_call(&client, &rpc_url, "eth_chainId", serde_json::json!([])).await;
     let hex = result.as_str().expect("eth_chainId returned non-string");
     let chain_id = u64::from_str_radix(hex.trim_start_matches("0x"), 16).expect("bad chain_id hex");
-    assert_eq!(chain_id, BASE_SEPOLIA.chain_id);
+    assert_eq!(
+        chain_id, network.chain_id,
+        "chain_id mismatch for {}",
+        network.name
+    );
 }
 
-#[tokio::test]
-#[ignore]
-async fn sepolia_usdc_contract_exists() {
+async fn verify_usdc_contract_exists(network: &payg::network::NetworkConfig) {
     let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_SEPOLIA);
-
+    let rpc_url = rpc_url_for(network);
     let result = rpc_call(
         &client,
         &rpc_url,
         "eth_getCode",
-        serde_json::json!([BASE_SEPOLIA.usdc_address, "latest"]),
+        serde_json::json!([network.usdc_address, "latest"]),
     )
     .await;
     let code = result.as_str().expect("eth_getCode returned non-string");
     assert!(
         code.len() > 4,
-        "no contract at USDC address {} on base-sepolia",
-        BASE_SEPOLIA.usdc_address
+        "no contract at USDC address {} on {}",
+        network.usdc_address,
+        network.name
     );
 }
 
-#[tokio::test]
-#[ignore]
-async fn sepolia_usdc_decimals_is_6() {
+async fn verify_usdc_decimals(network: &payg::network::NetworkConfig) {
     let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_SEPOLIA);
-
-    let hex = eth_call_hex(&client, &rpc_url, BASE_SEPOLIA.usdc_address, "0x313ce567").await;
+    let rpc_url = rpc_url_for(network);
+    let hex = eth_call_hex(&client, &rpc_url, network.usdc_address, "0x313ce567").await;
     assert_eq!(
         decode_abi_uint8(&hex),
         6,
-        "USDC decimals should be 6 on base-sepolia"
+        "USDC decimals should be 6 on {}",
+        network.name
     );
 }
 
-#[tokio::test]
-#[ignore]
-async fn sepolia_usdc_name_matches_eip712() {
+async fn verify_usdc_name(network: &payg::network::NetworkConfig) {
     let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_SEPOLIA);
-
-    let hex = eth_call_hex(&client, &rpc_url, BASE_SEPOLIA.usdc_address, "0x06fdde03").await;
+    let rpc_url = rpc_url_for(network);
+    let hex = eth_call_hex(&client, &rpc_url, network.usdc_address, "0x06fdde03").await;
     let name = decode_abi_string(&hex);
     assert_eq!(
-        name, BASE_SEPOLIA.eip712_name,
-        "USDC name() should be '{}' on base-sepolia, got '{name}'",
-        BASE_SEPOLIA.eip712_name
+        name, network.eip712_name,
+        "USDC name() should be '{}' on {}, got '{name}'",
+        network.eip712_name, network.name
     );
 }
 
-#[tokio::test]
-#[ignore]
-async fn sepolia_usdc_version_is_2() {
+async fn verify_usdc_version(network: &payg::network::NetworkConfig) {
     let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_SEPOLIA);
-
-    let hex = eth_call_hex(&client, &rpc_url, BASE_SEPOLIA.usdc_address, "0x54fd4d50").await;
+    let rpc_url = rpc_url_for(network);
+    let hex = eth_call_hex(&client, &rpc_url, network.usdc_address, "0x54fd4d50").await;
     let version = decode_abi_string(&hex);
     assert_eq!(
-        version, BASE_SEPOLIA.eip712_version,
-        "USDC version() should be '{}' on base-sepolia, got '{version}'",
-        BASE_SEPOLIA.eip712_version
+        version, network.eip712_version,
+        "USDC version() should be '{}' on {}, got '{version}'",
+        network.eip712_version, network.name
     );
 }
 
-#[tokio::test]
-#[ignore]
-async fn sepolia_rpc_is_reachable() {
+async fn verify_rpc_reachable(network: &payg::network::NetworkConfig) {
     let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_SEPOLIA);
-
+    let rpc_url = rpc_url_for(network);
     let result = rpc_call(&client, &rpc_url, "eth_blockNumber", serde_json::json!([])).await;
     let hex = result
         .as_str()
@@ -211,8 +206,49 @@ async fn sepolia_rpc_is_reachable() {
         u64::from_str_radix(hex.trim_start_matches("0x"), 16).expect("bad block number hex");
     assert!(
         block > 0,
-        "base-sepolia block number should be > 0, got {block}"
+        "{} block number should be > 0, got {block}",
+        network.name
     );
+}
+
+// ---------------------------------------------------------------------------
+// Base Sepolia Tests
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn sepolia_chain_id_matches() {
+    verify_chain_id(&BASE_SEPOLIA).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn sepolia_usdc_contract_exists() {
+    verify_usdc_contract_exists(&BASE_SEPOLIA).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn sepolia_usdc_decimals_is_6() {
+    verify_usdc_decimals(&BASE_SEPOLIA).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn sepolia_usdc_name_matches_eip712() {
+    verify_usdc_name(&BASE_SEPOLIA).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn sepolia_usdc_version_is_2() {
+    verify_usdc_version(&BASE_SEPOLIA).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn sepolia_rpc_is_reachable() {
+    verify_rpc_reachable(&BASE_SEPOLIA).await;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,93 +258,37 @@ async fn sepolia_rpc_is_reachable() {
 #[tokio::test]
 #[ignore]
 async fn mainnet_chain_id_matches() {
-    let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_MAINNET);
-
-    let result = rpc_call(&client, &rpc_url, "eth_chainId", serde_json::json!([])).await;
-    let hex = result.as_str().expect("eth_chainId returned non-string");
-    let chain_id = u64::from_str_radix(hex.trim_start_matches("0x"), 16).expect("bad chain_id hex");
-    assert_eq!(chain_id, BASE_MAINNET.chain_id);
+    verify_chain_id(&BASE_MAINNET).await;
 }
 
 #[tokio::test]
 #[ignore]
 async fn mainnet_usdc_contract_exists() {
-    let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_MAINNET);
-
-    let result = rpc_call(
-        &client,
-        &rpc_url,
-        "eth_getCode",
-        serde_json::json!([BASE_MAINNET.usdc_address, "latest"]),
-    )
-    .await;
-    let code = result.as_str().expect("eth_getCode returned non-string");
-    assert!(
-        code.len() > 4,
-        "no contract at USDC address {} on base",
-        BASE_MAINNET.usdc_address
-    );
+    verify_usdc_contract_exists(&BASE_MAINNET).await;
 }
 
 #[tokio::test]
 #[ignore]
 async fn mainnet_usdc_decimals_is_6() {
-    let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_MAINNET);
-
-    let hex = eth_call_hex(&client, &rpc_url, BASE_MAINNET.usdc_address, "0x313ce567").await;
-    assert_eq!(
-        decode_abi_uint8(&hex),
-        6,
-        "USDC decimals should be 6 on base"
-    );
+    verify_usdc_decimals(&BASE_MAINNET).await;
 }
 
 #[tokio::test]
 #[ignore]
 async fn mainnet_usdc_name_matches_eip712() {
-    let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_MAINNET);
-
-    let hex = eth_call_hex(&client, &rpc_url, BASE_MAINNET.usdc_address, "0x06fdde03").await;
-    let name = decode_abi_string(&hex);
-    assert_eq!(
-        name, BASE_MAINNET.eip712_name,
-        "USDC name() should be '{}' on base, got '{name}'",
-        BASE_MAINNET.eip712_name
-    );
+    verify_usdc_name(&BASE_MAINNET).await;
 }
 
 #[tokio::test]
 #[ignore]
 async fn mainnet_usdc_version_is_2() {
-    let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_MAINNET);
-
-    let hex = eth_call_hex(&client, &rpc_url, BASE_MAINNET.usdc_address, "0x54fd4d50").await;
-    let version = decode_abi_string(&hex);
-    assert_eq!(
-        version, BASE_MAINNET.eip712_version,
-        "USDC version() should be '{}' on base, got '{version}'",
-        BASE_MAINNET.eip712_version
-    );
+    verify_usdc_version(&BASE_MAINNET).await;
 }
 
 #[tokio::test]
 #[ignore]
 async fn mainnet_rpc_is_reachable() {
-    let client = build_client();
-    let rpc_url = rpc_url_for(&BASE_MAINNET);
-
-    let result = rpc_call(&client, &rpc_url, "eth_blockNumber", serde_json::json!([])).await;
-    let hex = result
-        .as_str()
-        .expect("eth_blockNumber returned non-string");
-    let block =
-        u64::from_str_radix(hex.trim_start_matches("0x"), 16).expect("bad block number hex");
-    assert!(block > 0, "base block number should be > 0, got {block}");
+    verify_rpc_reachable(&BASE_MAINNET).await;
 }
 
 // ---------------------------------------------------------------------------
