@@ -30,7 +30,7 @@ pub struct NetworkConfig {
     pub usdc_address: &'static str,
     pub eip712_name: &'static str,
     pub eip712_version: &'static str,
-    pub network_name: &'static str,      // x402 protocol field
+    pub name: &'static str,      // x402 protocol field
     pub default_rpc_url: &'static str,
 }
 ```
@@ -41,7 +41,7 @@ pub struct NetworkConfig {
 | `usdc_address` | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
 | `eip712_name` | `"USD Coin"` | `"USDC"` |
 | `eip712_version` | `"2"` | `"2"` |
-| `network_name` | `"base"` | `"base-sepolia"` |
+| `name` | `"base"` | `"base-sepolia"` |
 | `default_rpc_url` | `https://mainnet.base.org` | `https://sepolia.base.org` |
 
 Sources: x402-rs `networks.rs` (lines 148-170), Circle USDC testnet deployment docs.
@@ -83,8 +83,8 @@ The x402 backend currently imports `BASE_CHAIN_ID` and `BASE_USDC_ADDRESS` as co
 | `x402.rs:51` `asset_address` | `self.usdc_address` (from const) | `self.network.usdc_address` (parsed) |
 | `x402.rs:56` EIP-712 `name` | `"USD Coin"` | `self.network.eip712_name` |
 | `x402.rs:57` EIP-712 `version` | `"2"` | `self.network.eip712_version` |
-| `x402.rs:138` payload `network` | `"base"` | `self.network.network_name` |
-| `x402.rs:143` requirements `network` | `"base"` | `self.network.network_name` |
+| `x402.rs:138` payload `network` | `"base"` | `self.network.name` |
+| `x402.rs:143` requirements `network` | `"base"` | `self.network.name` |
 | `x402.rs:152-153` extra `name`/`version` | `"USD Coin"` / `"2"` | `self.network.eip712_name`/`version` |
 
 ### ETH backend: no changes needed
@@ -95,7 +95,7 @@ The ETH backend gets chain_id from the RPC provider (alloy auto-fills) and doesn
 
 `balance.rs` imports `BASE_USDC_ADDRESS` for the `balanceOf` query and hardcodes `"base"` / `"Base"` in output. It needs to receive `NetworkConfig` and use:
 - `network.usdc_address` for the ERC-20 query
-- `network.network_name` / display name for output
+- `network.name` / display name for output
 
 ### Config changes
 
@@ -173,7 +173,7 @@ pub struct NetworkConfig {
     pub usdc_address: &'static str,
     pub eip712_name: &'static str,
     pub eip712_version: &'static str,
-    pub network_name: &'static str,
+    pub name: &'static str,
     pub default_rpc_url: &'static str,
 }
 
@@ -182,7 +182,7 @@ pub const BASE_MAINNET: NetworkConfig = NetworkConfig {
     usdc_address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     eip712_name: "USD Coin",
     eip712_version: "2",
-    network_name: "base",
+    name: "base",
     default_rpc_url: "https://mainnet.base.org",
 };
 
@@ -191,7 +191,7 @@ pub const BASE_SEPOLIA: NetworkConfig = NetworkConfig {
     usdc_address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     eip712_name: "USDC",
     eip712_version: "2",
-    network_name: "base-sepolia",
+    name: "base-sepolia",
     default_rpc_url: "https://sepolia.base.org",
 };
 
@@ -279,7 +279,7 @@ pub struct X402Backend {
 }
 
 // In charge(), use self.network.chain_id, self.network.eip712_name, etc.
-// In build_settle_request(), use self.network.network_name
+// In build_settle_request(), use self.network.name
 ```
 
 ### Changes to `crates/payg-cli/src/cli.rs`
@@ -324,7 +324,7 @@ let network = match cli.network {
 | 7 | `crates/payg/src/backend.rs` | 32-46 | Pass `NetworkConfig` to `from_config()` and backend constructors |
 | 8 | `crates/payg/src/backend/x402.rs` | 16 | Change imports from constants to NetworkConfig |
 | 9 | `crates/payg/src/backend/x402.rs` | 30-57 | Use network fields in `new()` and `charge()` |
-| 10 | `crates/payg/src/backend/x402.rs` | 128-163 | Use `network.network_name` in `build_settle_request()` |
+| 10 | `crates/payg/src/backend/x402.rs` | 128-163 | Use `network.name` in `build_settle_request()` |
 | 11 | `crates/payg-cli/src/cli.rs` | 12-19 | Add `--network` global flag |
 | 12 | `crates/payg-cli/src/main.rs` | 16-20 | Thread `cli.network` to commands |
 | 13 | `crates/payg-cli/src/commands/charge.rs` | 21-92 | Resolve network, pass to lib |
