@@ -293,13 +293,13 @@ const E2E_MAX_CHARGE_USDC: u64 = 10_000;
 #[ignore]
 async fn e2e_charge_sepolia() {
     // Gate 1: Wallet — skip if PAYG_PRIVATE_KEY not set
-    let Ok(_key) = std::env::var("PAYG_PRIVATE_KEY") else {
+    if std::env::var("PAYG_PRIVATE_KEY").is_err() {
         eprintln!("Skipping e2e_charge_sepolia: PAYG_PRIVATE_KEY not set");
         eprintln!("To run: export PAYG_PRIVATE_KEY=<base-sepolia-funded-key>");
         eprintln!("Get testnet USDC from https://faucet.circle.com/");
         eprintln!("(no ETH needed — x402 facilitator pays gas)");
         return;
-    };
+    }
 
     let network = &BASE_SEPOLIA;
     assert!(
@@ -309,11 +309,7 @@ async fn e2e_charge_sepolia() {
 
     // Gate 2: Facilitator health check — skip if unreachable
     let facilitator_url = payg::DEFAULT_FACILITATOR_URL;
-    let health_client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()
-        .expect("failed to build health check client");
-    if health_client.get(facilitator_url).send().await.is_err() {
+    if CLIENT.get(facilitator_url).send().await.is_err() {
         eprintln!(
             "Skipping e2e_charge_sepolia: x402 facilitator at {facilitator_url} is unreachable"
         );
@@ -322,8 +318,7 @@ async fn e2e_charge_sepolia() {
 
     // Load wallet and config using the library's own machinery
     let config = payg::ConsumerConfig::default();
-    let password: Option<&str> = None;
-    let signer = payg::wallet::load_wallet(&config, password)
+    let signer = payg::wallet::load_wallet(&config, None)
         .expect("failed to load wallet from PAYG_PRIVATE_KEY");
 
     let recipient = signer.address(); // charge to self to avoid losing testnet USDC
@@ -343,7 +338,7 @@ async fn e2e_charge_sepolia() {
         .as_str()
         .expect("balanceOf returned non-string")
         .trim_start_matches("0x");
-    let balance = u64::from_str_radix(balance_hex.trim_start_matches('0'), 16).unwrap_or(0);
+    let balance = u64::from_str_radix(balance_hex, 16).unwrap_or(0);
 
     // 0.001 USDC = 1000 units (6 decimals)
     let charge_amount = 1000u64;
