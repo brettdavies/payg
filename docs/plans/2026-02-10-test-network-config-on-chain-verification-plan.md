@@ -340,10 +340,10 @@ cargo test e2e -- --ignored
 - [x] `payg::charge_raw(amount, recipient, ...)` succeeds on Base Sepolia
 - [x] Receipt contains valid tx_hash (0x-prefixed, 66 chars)
 - [x] Test skips cleanly when `PAYG_PRIVATE_KEY` is not set
-- [ ] On-chain receipt confirms tx succeeded (`status == "0x1"`) (NEW)
-- [ ] Test skips cleanly when facilitator is unreachable (NEW)
-- [ ] Testnet-only assertion guard present (NEW)
-- [ ] Test-specific charge ceiling constant present (NEW)
+- [x] On-chain receipt confirms tx succeeded (`status == "0x1"`) (NEW)
+- [x] Test skips cleanly when facilitator is unreachable (NEW)
+- [x] Testnet-only assertion guard present (NEW)
+- [x] Test-specific charge ceiling constant present (NEW)
 
 ### Infrastructure
 
@@ -351,7 +351,7 @@ cargo test e2e -- --ignored
 - [x] `cargo test -- --ignored` runs on-chain verification tests
 - [x] `cargo clippy` clean with dev-dependencies
 - [x] No new production dependencies added
-- [ ] Shared `reqwest::Client` via `LazyLock` (NEW)
+- [x] Shared `reqwest::Client` via `LazyLock` (NEW)
 
 ## Implementation Plan
 
