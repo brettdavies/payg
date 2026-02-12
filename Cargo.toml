@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/payg", "crates/payg-cli"]
+exclude = ["examples/simple-cli"]
 
 [profile.release]
 strip = true
