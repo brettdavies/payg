@@ -1,4 +1,4 @@
-use assert_cmd::cargo::cargo_bin_cmd;
+#[allow(deprecated)]
 use assert_cmd::Command;
 use predicates::prelude::*;
 
@@ -11,7 +11,8 @@ const FAKE_HOME: &str = "/tmp/payg-test-nonexistent";
 
 /// Build a `payg` command isolated from user config.
 fn base_cmd() -> Command {
-    let mut cmd = Command::from(cargo_bin_cmd!("payg"));
+    #[allow(deprecated)]
+    let mut cmd = Command::cargo_bin("payg").unwrap();
     cmd.env("HOME", FAKE_HOME);
     cmd.env_remove("PAYG_PRIVATE_KEY");
     cmd.env_remove("PAYG_NETWORK");
@@ -57,10 +58,7 @@ fn help_lists_env_vars() {
 
 #[test]
 fn invalid_subcommand_exits_2() {
-    base_cmd()
-        .arg("nonexistent")
-        .assert()
-        .code(2);
+    base_cmd().arg("nonexistent").assert().code(2);
 }
 
 // ── Address command ─────────────────────────────────────────────────
@@ -91,10 +89,7 @@ fn address_json_format() {
 
 #[test]
 fn address_no_wallet_exits_77() {
-    base_cmd()
-        .arg("address")
-        .assert()
-        .code(77);
+    base_cmd().arg("address").assert().code(77);
 }
 
 #[test]
