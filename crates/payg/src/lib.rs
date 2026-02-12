@@ -1,12 +1,19 @@
 #[cfg(not(any(feature = "x402", feature = "eth")))]
 compile_error!("At least one payment backend feature must be enabled: 'x402' or 'eth'");
 
+/// Payment backend implementations (x402 USDC, direct ETH).
 pub mod backend;
+/// Charge request and receipt types.
 pub mod charge;
+/// Consumer and project configuration loading.
 pub mod config;
+/// Error types for all PAYG operations.
 pub mod error;
+/// Network presets for Base mainnet and Sepolia testnet.
 pub mod network;
+/// Price parsing and token amount conversion.
 pub mod pricing;
+/// Wallet loading from env var or encrypted keyfile.
 pub mod wallet;
 
 pub use charge::{ChargeReceipt, ChargeRequest};

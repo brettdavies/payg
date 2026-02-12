@@ -1,3 +1,8 @@
+//! ETH backend — direct ETH transfers via alloy-rs.
+//!
+//! Sends a simple ETH value transfer using alloy's provider and signer.
+//! The sender must hold enough ETH for both the transfer amount and gas.
+
 use std::time::Duration;
 
 use alloy_network::EthereumWallet;
