@@ -7,19 +7,21 @@ use predicates::prelude::*;
 const HARDHAT_KEY: &str = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 const HARDHAT_ADDR: &str = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
-/// Non-existent HOME to isolate from user's real ~/.payg/config.toml.
-const FAKE_HOME: &str = "/tmp/payg-test-nonexistent";
-
 /// Standard payg.toml fixture for charge tests.
 const PAYG_TOML_FIXTURE: &str = "\
 recipient = \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"\n\
 default_price = \"0.001 USDC\"\n";
 
 /// Build a `payg` command isolated from user config.
-fn base_cmd() -> Command {
+///
+/// Uses a fresh temp dir as HOME so stale keyfiles or config from previous
+/// test runs cannot contaminate results. Callers must keep the returned
+/// TempDir alive for the duration of the test (drop = cleanup).
+fn base_cmd() -> (Command, tempfile::TempDir) {
+    let fake_home = tempfile::tempdir().unwrap();
     #[allow(deprecated)]
     let mut cmd = Command::cargo_bin("payg").unwrap();
-    cmd.env("HOME", FAKE_HOME);
+    cmd.env("HOME", fake_home.path());
     cmd.env_remove("PAYG_PRIVATE_KEY");
     cmd.env_remove("PAYG_NETWORK");
     cmd.env_remove("PAYG_OUTPUT");
@@ -28,7 +30,7 @@ fn base_cmd() -> Command {
     cmd.env_remove("PAYG_FACILITATOR_URL");
     cmd.env_remove("PAYG_KEY_PASSWORD");
     cmd.env_remove("RUST_LOG");
-    cmd
+    (cmd, fake_home)
 }
 
 /// Create a temp dir with a payg.toml containing the given content.
@@ -42,8 +44,8 @@ fn temp_project(toml_content: &str) -> tempfile::TempDir {
 
 #[test]
 fn version_flag() {
-    base_cmd()
-        .arg("--version")
+    let (mut cmd, _home) = base_cmd();
+    cmd.arg("--version")
         .assert()
         .success()
         .stdout(predicate::str::contains("payg"));
@@ -51,8 +53,8 @@ fn version_flag() {
 
 #[test]
 fn help_output() {
-    base_cmd()
-        .arg("--help")
+    let (mut cmd, _home) = base_cmd();
+    cmd.arg("--help")
         .assert()
         .success()
         .stdout(predicate::str::contains("init"))
@@ -64,15 +66,16 @@ fn help_output() {
 
 #[test]
 fn invalid_subcommand_exits_2() {
-    base_cmd().arg("nonexistent").assert().code(2);
+    let (mut cmd, _home) = base_cmd();
+    cmd.arg("nonexistent").assert().code(2);
 }
 
 // ── Address command ─────────────────────────────────────────────────
 
 #[test]
 fn address_deterministic() {
-    base_cmd()
-        .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
+    let (mut cmd, _home) = base_cmd();
+    cmd.env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .arg("address")
         .assert()
         .success()
@@ -81,7 +84,8 @@ fn address_deterministic() {
 
 #[test]
 fn address_json_format() {
-    let output = base_cmd()
+    let (mut cmd, _home) = base_cmd();
+    let output = cmd
         .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .args(["address", "--output", "json"])
         .output()
@@ -98,7 +102,8 @@ fn address_json_format() {
 
 #[test]
 fn address_json_via_env_var() {
-    let output = base_cmd()
+    let (mut cmd, _home) = base_cmd();
+    let output = cmd
         .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .env("PAYG_OUTPUT", "json")
         .arg("address")
@@ -113,15 +118,14 @@ fn address_json_via_env_var() {
 
 #[test]
 fn address_no_wallet_exits_77() {
-    base_cmd().arg("address").assert().code(77);
+    let (mut cmd, _home) = base_cmd();
+    cmd.arg("address").assert().code(77);
 }
 
 #[test]
 fn address_no_wallet_json_error() {
-    let output = base_cmd()
-        .args(["address", "--output", "json"])
-        .output()
-        .unwrap();
+    let (mut cmd, _home) = base_cmd();
+    let output = cmd.args(["address", "--output", "json"]).output().unwrap();
 
     assert_eq!(output.status.code(), Some(77));
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
@@ -134,15 +138,14 @@ fn address_no_wallet_json_error() {
 
 #[test]
 fn balance_no_wallet_exits_77() {
-    base_cmd().arg("balance").assert().code(77);
+    let (mut cmd, _home) = base_cmd();
+    cmd.arg("balance").assert().code(77);
 }
 
 #[test]
 fn balance_no_wallet_json_error() {
-    let output = base_cmd()
-        .args(["balance", "--output", "json"])
-        .output()
-        .unwrap();
+    let (mut cmd, _home) = base_cmd();
+    let output = cmd.args(["balance", "--output", "json"]).output().unwrap();
 
     assert_eq!(output.status.code(), Some(77));
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
@@ -156,8 +159,8 @@ fn balance_no_wallet_json_error() {
 fn charge_dry_run_text() {
     let dir = temp_project(PAYG_TOML_FIXTURE);
 
-    base_cmd()
-        .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
+    let (mut cmd, _home) = base_cmd();
+    cmd.env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .current_dir(dir.path())
         .args(["charge", "--dry-run"])
         .assert()
@@ -169,7 +172,8 @@ fn charge_dry_run_text() {
 fn charge_dry_run_json() {
     let dir = temp_project(PAYG_TOML_FIXTURE);
 
-    let output = base_cmd()
+    let (mut cmd, _home) = base_cmd();
+    let output = cmd
         .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .current_dir(dir.path())
         .args(["charge", "--dry-run", "--output", "json"])
@@ -186,9 +190,10 @@ fn charge_dry_run_json() {
 #[test]
 fn charge_no_config_exits_78() {
     let dir = tempfile::tempdir().unwrap();
+
+    let (mut cmd, _home) = base_cmd();
     // No payg.toml, no CLI amount/recipient — should fail with config error
-    base_cmd()
-        .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
+    cmd.env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .current_dir(dir.path())
         .arg("charge")
         .assert()
@@ -199,9 +204,9 @@ fn charge_no_config_exits_78() {
 fn charge_exceeds_ceiling_exits_42() {
     let dir = temp_project("recipient = \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"\n");
 
+    let (mut cmd, _home) = base_cmd();
     // Default ceiling is 1.00 USDC; charging 100 USDC exceeds it
-    base_cmd()
-        .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
+    cmd.env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .current_dir(dir.path())
         .args(["charge", "100 USDC"])
         .assert()
@@ -214,9 +219,9 @@ fn charge_exceeds_ceiling_exits_42() {
 fn init_already_exists_error() {
     let dir = temp_project(PAYG_TOML_FIXTURE);
 
+    let (mut cmd, _home) = base_cmd();
     // payg.toml already present — init should fail
-    base_cmd()
-        .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
+    cmd.env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
         .current_dir(dir.path())
         .arg("init")
         .assert()
