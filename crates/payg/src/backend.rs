@@ -1,6 +1,8 @@
+/// x402 backend — ERC-3009 USDC transfers via facilitator.
 #[cfg(feature = "x402")]
 pub mod x402;
 
+/// ETH backend — direct ETH transfers via alloy-rs.
 #[cfg(feature = "eth")]
 pub mod eth;
 
