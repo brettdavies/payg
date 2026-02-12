@@ -1,3 +1,4 @@
+// assert_cmd::Command::cargo_bin is deprecated but no stable replacement exists yet
 #[allow(deprecated)]
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -8,6 +9,11 @@ const HARDHAT_ADDR: &str = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
 /// Non-existent HOME to isolate from user's real ~/.payg/config.toml.
 const FAKE_HOME: &str = "/tmp/payg-test-nonexistent";
+
+/// Standard payg.toml fixture for charge tests.
+const PAYG_TOML_FIXTURE: &str = "\
+recipient = \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"\n\
+default_price = \"0.001 USDC\"\n";
 
 /// Build a `payg` command isolated from user config.
 fn base_cmd() -> Command {
@@ -21,7 +27,15 @@ fn base_cmd() -> Command {
     cmd.env_remove("PAYG_RPC_URL");
     cmd.env_remove("PAYG_FACILITATOR_URL");
     cmd.env_remove("PAYG_KEY_PASSWORD");
+    cmd.env_remove("RUST_LOG");
     cmd
+}
+
+/// Create a temp dir with a payg.toml containing the given content.
+fn temp_project(toml_content: &str) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("payg.toml"), toml_content).unwrap();
+    dir
 }
 
 // ── Version & help ──────────────────────────────────────────────────
@@ -36,7 +50,7 @@ fn version_flag() {
 }
 
 #[test]
-fn help_lists_subcommands() {
+fn help_output() {
     base_cmd()
         .arg("--help")
         .assert()
@@ -44,15 +58,7 @@ fn help_lists_subcommands() {
         .stdout(predicate::str::contains("init"))
         .stdout(predicate::str::contains("charge"))
         .stdout(predicate::str::contains("address"))
-        .stdout(predicate::str::contains("balance"));
-}
-
-#[test]
-fn help_lists_env_vars() {
-    base_cmd()
-        .arg("--help")
-        .assert()
-        .success()
+        .stdout(predicate::str::contains("balance"))
         .stdout(predicate::str::contains("PAYG_PRIVATE_KEY"));
 }
 
@@ -85,6 +91,24 @@ fn address_json_format() {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(json["status"], "ok");
     assert_eq!(json["address"], HARDHAT_ADDR);
+    let obj = json.as_object().unwrap();
+    assert!(obj.contains_key("status"), "missing 'status' field");
+    assert!(obj.contains_key("address"), "missing 'address' field");
+}
+
+#[test]
+fn address_json_via_env_var() {
+    let output = base_cmd()
+        .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
+        .env("PAYG_OUTPUT", "json")
+        .arg("address")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["status"], "ok");
+    assert_eq!(json["address"], HARDHAT_ADDR);
 }
 
 #[test]
@@ -101,6 +125,28 @@ fn address_no_wallet_json_error() {
 
     assert_eq!(output.status.code(), Some(77));
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["status"], "error");
+    assert_eq!(json["code"], "NO_WALLET");
+    assert!(json["message"].is_string(), "missing 'message' field");
+}
+
+// ── Balance command ─────────────────────────────────────────────────
+
+#[test]
+fn balance_no_wallet_exits_77() {
+    base_cmd().arg("balance").assert().code(77);
+}
+
+#[test]
+fn balance_no_wallet_json_error() {
+    let output = base_cmd()
+        .args(["balance", "--output", "json"])
+        .output()
+        .unwrap();
+
+    assert_eq!(output.status.code(), Some(77));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json["status"], "error");
     assert_eq!(json["code"], "NO_WALLET");
 }
 
@@ -108,12 +154,7 @@ fn address_no_wallet_json_error() {
 
 #[test]
 fn charge_dry_run_text() {
-    let dir = tempfile::tempdir().unwrap();
-    std::fs::write(
-        dir.path().join("payg.toml"),
-        "recipient = \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"\ndefault_price = \"0.001 USDC\"\n",
-    )
-    .unwrap();
+    let dir = temp_project(PAYG_TOML_FIXTURE);
 
     base_cmd()
         .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
@@ -126,12 +167,7 @@ fn charge_dry_run_text() {
 
 #[test]
 fn charge_dry_run_json() {
-    let dir = tempfile::tempdir().unwrap();
-    std::fs::write(
-        dir.path().join("payg.toml"),
-        "recipient = \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"\ndefault_price = \"0.001 USDC\"\n",
-    )
-    .unwrap();
+    let dir = temp_project(PAYG_TOML_FIXTURE);
 
     let output = base_cmd()
         .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
@@ -143,6 +179,8 @@ fn charge_dry_run_json() {
     assert!(output.status.success());
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(json["status"], "dry_run");
+    assert!(json["amount"].is_string(), "missing 'amount' field");
+    assert!(json["recipient"].is_string(), "missing 'recipient' field");
 }
 
 #[test]
@@ -159,12 +197,7 @@ fn charge_no_config_exits_78() {
 
 #[test]
 fn charge_exceeds_ceiling_exits_42() {
-    let dir = tempfile::tempdir().unwrap();
-    std::fs::write(
-        dir.path().join("payg.toml"),
-        "recipient = \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"\n",
-    )
-    .unwrap();
+    let dir = temp_project("recipient = \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\"\n");
 
     // Default ceiling is 1.00 USDC; charging 100 USDC exceeds it
     base_cmd()
@@ -173,4 +206,19 @@ fn charge_exceeds_ceiling_exits_42() {
         .args(["charge", "100 USDC"])
         .assert()
         .code(42);
+}
+
+// ── Init command ────────────────────────────────────────────────────
+
+#[test]
+fn init_already_exists_error() {
+    let dir = temp_project(PAYG_TOML_FIXTURE);
+
+    // payg.toml already present — init should fail
+    base_cmd()
+        .env("PAYG_PRIVATE_KEY", HARDHAT_KEY)
+        .current_dir(dir.path())
+        .arg("init")
+        .assert()
+        .failure();
 }

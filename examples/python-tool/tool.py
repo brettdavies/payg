@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 
-def charge(amount: str = "0.001 USDC") -> dict:
+def charge(amount: str) -> dict:
     """Run `payg charge` and return the parsed JSON response."""
     result = subprocess.run(
         ["payg", "charge", amount, "--output", "json"],
@@ -26,7 +26,7 @@ def charge(amount: str = "0.001 USDC") -> dict:
         print(f"payg error: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(result.returncode or 1)
 
-    if response.get("status") != "success":
+    if response.get("status") not in ("ok", "dry_run"):
         code = response.get("code", "UNKNOWN")
         message = response.get("message", "payment failed")
         print(f"Payment failed [{code}]: {message}", file=sys.stderr)

@@ -7,4 +7,3 @@ publish = false
 [dependencies]
 payg = { path = "../../crates/payg" }
 tokio = { version = "1.35", features = ["rt", "macros"] }
-serde_json = "1.0"
