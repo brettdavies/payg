@@ -89,7 +89,10 @@ impl X402Backend {
         // 3. POST to facilitator /settle
         let response = self
             .client
-            .post(format!("{}/settle", self.facilitator_url))
+            .post(format!(
+                "{}/settle",
+                self.facilitator_url.trim_end_matches('/')
+            ))
             .json(&settle_json)
             .send()
             .await

@@ -7,6 +7,9 @@
 use std::env;
 use std::process;
 
+/// WARNING: Hardhat account #0 — a well-known test address whose private key is public.
+/// Any real funds sent here can be stolen by anyone.
+/// REPLACE with your own address before using on mainnet.
 const RECIPIENT: &str = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
 #[tokio::main(flavor = "current_thread")]

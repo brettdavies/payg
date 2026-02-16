@@ -95,9 +95,6 @@ fn address_json_format() {
     let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(json["status"], "ok");
     assert_eq!(json["address"], HARDHAT_ADDR);
-    let obj = json.as_object().unwrap();
-    assert!(obj.contains_key("status"), "missing 'status' field");
-    assert!(obj.contains_key("address"), "missing 'address' field");
 }
 
 #[test]

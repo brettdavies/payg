@@ -101,34 +101,34 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_usdc() {
+    fn parse_usdc() {
         let p = parse_price("0.001 USDC").unwrap();
         assert_eq!(p.amount, U256::from(1000u64));
         assert_eq!(p.token, "USDC");
     }
 
     #[test]
-    fn test_parse_one_usdc() {
+    fn parse_one_usdc() {
         let p = parse_price("1.00 USDC").unwrap();
         assert_eq!(p.amount, U256::from(1_000_000u64));
         assert_eq!(p.token, "USDC");
     }
 
     #[test]
-    fn test_parse_eth() {
+    fn parse_eth() {
         let p = parse_price("0.01 ETH").unwrap();
         assert_eq!(p.amount, U256::from(10_000_000_000_000_000u64));
         assert_eq!(p.token, "ETH");
     }
 
     #[test]
-    fn test_parse_free() {
+    fn parse_free() {
         let p = parse_price("free").unwrap();
         assert_eq!(p.amount, U256::ZERO);
     }
 
     #[test]
-    fn test_parse_raw_number() {
+    fn parse_raw_number() {
         let p = parse_price("1000").unwrap();
         // 1000 * 10^6 = 1_000_000_000
         assert_eq!(p.amount, U256::from(1_000_000_000u64));
@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_invalid_token() {
+    fn parse_invalid_token() {
         assert!(parse_price("1.0 BTC").is_err());
     }
 }

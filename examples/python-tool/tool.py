@@ -26,7 +26,7 @@ def charge(amount: str) -> dict:
         print(f"payg error: {result.stderr.strip()}", file=sys.stderr)
         sys.exit(result.returncode or 1)
 
-    if response.get("status") not in ("ok", "dry_run"):
+    if response.get("status") not in ("success", "dry_run"):
         code = response.get("code", "UNKNOWN")
         message = response.get("message", "payment failed")
         print(f"Payment failed [{code}]: {message}", file=sys.stderr)
