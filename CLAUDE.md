@@ -60,3 +60,13 @@ CLI flag > env var > config file (`~/.payg/config.toml`) > default.
 - ETH provider uses `.connect(&str)` not `.connect_http(Url)` — avoids reqwest leak
 - Use individual alloy sub-crates, not the `alloy` facade crate
 - x402 facilitator pays gas; signer only signs ERC-3009 auth locally
+
+## Versioning
+
+- **Scheme:** Semantic versioning (major.minor.patch)
+- **Tool:** [release-plz](https://release-plz.dev/) — automated via GitHub Actions
+- **Both crates version in lockstep** via `version_group` in `release-plz.toml`
+- **Changelog:** Single root `CHANGELOG.md`, auto-generated from Conventional Commits
+- **Release flow:** merge to `main` → release-plz opens Release PR → merge PR → git tag + GitHub release
+- **Not published to crates.io yet** — `git_only = true` in `release-plz.toml`
+- **Merge strategy for Release PRs:** Use standard merge commit (not squash/rebase) — squash creates a race condition in release-plz's detection

@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Deny all permissions by default; grant per-job
+permissions: {}
+
+jobs:
+  release-plz-release:
+    name: Release
+    runs-on: ubuntu-latest
+    # Prevent forks from running release automation
+    if: github.repository == 'brettdavies/payg'
+    permissions:
+      contents: write
+    concurrency:
+      group: release-plz-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: release-plz/action@f708778669256143d984cce4b23592637532e040 # v0.5.127
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-plz-pr:
+    name: Release PR
+    runs-on: ubuntu-latest
+    # Prevent forks from running release automation
+    if: github.repository == 'brettdavies/payg'
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-plz-pr
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: release-plz/action@f708778669256143d984cce4b23592637532e040 # v0.5.127
+        with:
+          command: release-pr
+        env:
+          # NOTE: GITHUB_TOKEN cannot trigger CI on release PRs.
+          # Release PRs must be manually verified before merging.
+          # See: https://release-plz.dev/docs/github/token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
