@@ -70,3 +70,21 @@ CLI flag > env var > config file (`~/.payg/config.toml`) > default.
 - **Release flow:** merge to `main` → release-plz opens Release PR → merge PR → git tag + GitHub release
 - **Not published to crates.io yet** — `git_only = true` in `release-plz.toml`
 - **Merge strategy for Release PRs:** Use standard merge commit (not squash/rebase) — squash creates a race condition in release-plz's detection
+
+## Git Hooks
+
+Project-local hooks live in `.githooks/`. After cloning, activate them:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+**Pre-commit hook** enforces:
+- No direct commits to `main` (use a feature branch + PR)
+- Commit signing must be enabled (`commit.gpgsign = true`)
+
+## Branch Workflow
+
+- `development` — integration branch; PRs target here
+- `main` — protected; receives merges from `development` only via PR
+- Feature branches — branch from `development`, PR back to `development`
