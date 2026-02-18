@@ -80,6 +80,7 @@ git config core.hooksPath .githooks
 ```
 
 **Pre-commit hook** enforces:
+
 - No direct commits to `main` (use a feature branch + PR)
 - Commit signing must be enabled (`commit.gpgsign = true`)
 

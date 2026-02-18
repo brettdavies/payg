@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(echo $TOOL_INPUT | jq -r '.file_path // empty') && [[ \"$file\" == *.md ]] && markdownlint-cli2 --no-globs --fix \"$file\" 2>&1 || true"
+          }
+        ]
+      }
+    ]
+  }
+}
