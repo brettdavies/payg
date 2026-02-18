@@ -81,8 +81,20 @@ git config core.hooksPath .githooks
 
 **Pre-commit hook** enforces:
 
-- No direct commits to `main` (use a feature branch + PR)
+- No direct commits to `main` or `development` (use a feature branch + PR)
 - Commit signing must be enabled (`commit.gpgsign = true`)
+
+**Agent/CI signing setup:**
+
+```sh
+git config user.signingkey <YOUR_KEY_ID>
+git config gpg.format ssh    # or "openpgp" for GPG keys
+git config commit.gpgsign true
+```
+
+## PR Template
+
+A pull request template lives in `.github/pull_request_template.md`. GitHub auto-populates it when opening a PR. The PR title should follow Conventional Commits: `type(scope): description`.
 
 ## Branch Workflow
 
