@@ -69,4 +69,35 @@ CLI flag > env var > config file (`~/.payg/config.toml`) > default.
 - **Changelog:** Single root `CHANGELOG.md`, auto-generated from Conventional Commits
 - **Release flow:** merge to `main` → release-plz opens Release PR → merge PR → git tag + GitHub release
 - **Not published to crates.io yet** — `git_only = true` in `release-plz.toml`
-- **Merge strategy for Release PRs:** Use standard merge commit (not squash/rebase) — squash creates a race condition in release-plz's detection
+- **Merge strategy:** Standard merge commit to `main` (not squash/rebase) — squash creates a race condition in release-plz where unreviewed commits can slip into a release. Enforced by ruleset.
+
+## Git Hooks
+
+Project-local hooks live in `.githooks/`. After cloning, activate them:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+**Pre-commit hook** enforces:
+
+- No direct commits to `main` (use a feature branch + PR)
+- Commit signing must be enabled (`commit.gpgsign = true`)
+
+**Agent/CI signing setup:**
+
+```sh
+git config user.signingkey <YOUR_KEY_ID>
+git config gpg.format ssh    # or "openpgp" for GPG keys
+git config commit.gpgsign true
+```
+
+## PR Template
+
+A pull request template lives in `.github/pull_request_template.md`. GitHub auto-populates it when opening a PR. The PR title should follow Conventional Commits: `type(scope): description`.
+
+## Branch Workflow
+
+- `development` — integration branch; PRs target here
+- `main` — protected; receives merge commits from `development` only via PR
+- Feature branches — branch from `development`, PR back to `development`
