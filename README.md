@@ -267,4 +267,4 @@ payg charge "0.001 USDC" --recipient 0x...
 
 ## License
 
-MIT
+Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
