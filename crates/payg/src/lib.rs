@@ -1,12 +1,19 @@
 #[cfg(not(any(feature = "x402", feature = "eth")))]
 compile_error!("At least one payment backend feature must be enabled: 'x402' or 'eth'");
 
+/// Payment backend implementations (x402 USDC, direct ETH).
 pub mod backend;
+/// Charge request and receipt types.
 pub mod charge;
+/// Consumer and project configuration loading.
 pub mod config;
+/// Error types for all PAYG operations.
 pub mod error;
+/// Network presets for Base mainnet and Sepolia testnet.
 pub mod network;
+/// Price parsing and token amount conversion.
 pub mod pricing;
+/// Wallet loading from env var or encrypted keyfile.
 pub mod wallet;
 
 pub use charge::{ChargeReceipt, ChargeRequest};
@@ -85,6 +92,18 @@ pub async fn charge_raw(
 ///
 /// The ceiling and charge must use the same token. If the ceiling is in USDC
 /// and the charge is in ETH (or vice versa), the check returns an error.
+///
+/// # Examples
+///
+/// ```
+/// use payg::config::ConsumerConfig;
+/// use payg::pricing::parse_price;
+/// use payg::check_safety_ceiling;
+///
+/// let price = parse_price("0.50 USDC").unwrap();
+/// let config = ConsumerConfig::default();
+/// assert!(check_safety_ceiling(&price, "0.50 USDC", &config).is_ok());
+/// ```
 pub fn check_safety_ceiling(
     parsed: &pricing::ParsedPrice,
     original_amount: &str,
@@ -110,4 +129,48 @@ pub fn check_safety_ceiling(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ConsumerConfig;
+    use crate::pricing::parse_price;
+
+    #[test]
+    fn ceiling_allows_amount_under_limit() {
+        let parsed = parse_price("0.001 USDC").unwrap();
+        let config = ConsumerConfig::default();
+        assert!(check_safety_ceiling(&parsed, "0.001 USDC", &config).is_ok());
+    }
+
+    #[test]
+    fn ceiling_allows_amount_at_limit() {
+        let parsed = parse_price("1.00 USDC").unwrap();
+        let config = ConsumerConfig::default();
+        assert!(check_safety_ceiling(&parsed, "1.00 USDC", &config).is_ok());
+    }
+
+    #[test]
+    fn ceiling_rejects_amount_over_limit() {
+        let parsed = parse_price("2.00 USDC").unwrap();
+        let config = ConsumerConfig::default();
+        let err = check_safety_ceiling(&parsed, "2.00 USDC", &config).unwrap_err();
+        assert!(matches!(err, PaygError::ExceedsSafetyCeiling { .. }));
+    }
+
+    #[test]
+    fn ceiling_rejects_cross_token_comparison() {
+        let parsed = parse_price("0.001 ETH").unwrap();
+        let config = ConsumerConfig::default();
+        let err = check_safety_ceiling(&parsed, "0.001 ETH", &config).unwrap_err();
+        assert!(matches!(err, PaygError::ConfigError(_)));
+    }
+
+    #[test]
+    fn ceiling_allows_free() {
+        let parsed = parse_price("free").unwrap();
+        let config = ConsumerConfig::default();
+        assert!(check_safety_ceiling(&parsed, "free", &config).is_ok());
+    }
 }

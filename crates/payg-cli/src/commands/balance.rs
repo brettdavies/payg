@@ -137,6 +137,7 @@ async fn query_erc20_balance(
         .map_err(|e| PaygError::Http(format!("bad hex: {e}")))
 }
 
+/// Format a raw token amount (U256) into a human-readable decimal string.
 fn format_token_amount(amount: U256, decimals: u32) -> String {
     let divisor = U256::from(10u64).pow(U256::from(decimals));
     if amount.is_zero() {
@@ -152,5 +153,37 @@ fn format_token_amount(amount: U256, decimals: u32) -> String {
         format!("{whole}.0")
     } else {
         format!("{whole}.{trimmed}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::U256;
+
+    #[test]
+    fn format_zero() {
+        assert_eq!(format_token_amount(U256::ZERO, 6), "0.0");
+    }
+
+    #[test]
+    fn format_one_usdc() {
+        // 1.0 USDC = 1_000_000 (6 decimals)
+        assert_eq!(format_token_amount(U256::from(1_000_000u64), 6), "1.0");
+    }
+
+    #[test]
+    fn format_fractional_usdc() {
+        // 0.001 USDC = 1000 (6 decimals)
+        assert_eq!(format_token_amount(U256::from(1000u64), 6), "0.001");
+    }
+
+    #[test]
+    fn format_large_amount() {
+        // 1234.567890 USDC = 1_234_567_890 (6 decimals)
+        assert_eq!(
+            format_token_amount(U256::from(1_234_567_890u64), 6),
+            "1234.56789"
+        );
     }
 }

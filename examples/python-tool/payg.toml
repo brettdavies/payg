@@ -1,0 +1,4 @@
+# WARNING: Hardhat account #0 — a well-known test address whose private key
+# is public. Any real funds sent here can be stolen. REPLACE before mainnet use.
+recipient = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+default_price = "0.001 USDC"

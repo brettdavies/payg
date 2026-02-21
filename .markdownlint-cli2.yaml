@@ -1,0 +1,12 @@
+config:
+  # Allow long lines — plans and solutions have tables and URLs
+  line-length: false
+  # Allow duplicate headings in different sections
+  no-duplicate-heading:
+    siblings_only: true
+  # Allow bare URLs (common in reference sections)
+  no-bare-urls: false
+  # Allow HTML (details/summary, badges, etc.)
+  no-inline-html: false
+  # Accept compact table separators (---|---|---)
+  table-column-style: false

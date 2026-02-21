@@ -1,0 +1,52 @@
+[advisories]
+yanked = "deny"
+unmaintained = "workspace"
+unsound = "workspace"
+ignore = []
+
+[licenses]
+confidence-threshold = 0.8
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "BSL-1.0",
+    "MPL-2.0",
+    "Unlicense",
+    "OpenSSL",
+]
+exceptions = [
+    { allow = ["CC0-1.0"], crate = "secp256k1" },
+    { allow = ["CC0-1.0"], crate = "secp256k1-sys" },
+]
+
+[[licenses.clarify]]
+crate = "ring"
+expression = "LicenseRef-ring"
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "warn"
+allow-wildcard-paths = true
+highlight = "all"
+deny = [
+    { crate = "openssl", wrappers = ["native-tls"], reason = "use rustls instead" },
+    { crate = "openssl-sys", wrappers = ["openssl", "native-tls"], reason = "use rustls instead" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

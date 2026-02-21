@@ -1,3 +1,9 @@
+//! x402 backend — ERC-3009 USDC transfers via facilitator.
+//!
+//! Signs an ERC-3009 `transferWithAuthorization` locally, then POSTs the
+//! signed payload to an x402 facilitator which submits the on-chain transaction.
+//! The facilitator pays gas; the signer only needs USDC balance.
+
 use std::time::Duration;
 
 use alloy_primitives::{Address, U256};
@@ -83,7 +89,10 @@ impl X402Backend {
         // 3. POST to facilitator /settle
         let response = self
             .client
-            .post(format!("{}/settle", self.facilitator_url))
+            .post(format!(
+                "{}/settle",
+                self.facilitator_url.trim_end_matches('/')
+            ))
             .json(&settle_json)
             .send()
             .await
