@@ -30,7 +30,9 @@
           { "context": "test (--no-default-features --features eth)" },
           { "context": "test (--all-features)" },
           { "context": "lint" },
-          { "context": "msrv" }
+          { "context": "msrv" },
+          { "context": "deny" },
+          { "context": "doc" }
         ]
       }
     },
