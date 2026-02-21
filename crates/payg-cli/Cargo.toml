@@ -5,6 +5,8 @@ edition.workspace = true
 rust-version.workspace = true
 description = "CLI for PAYG crypto micropayments"
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [[bin]]
 name = "payg"

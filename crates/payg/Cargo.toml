@@ -5,6 +5,8 @@ edition.workspace = true
 rust-version.workspace = true
 description = "Pay-as-you-go crypto micropayments for CLI tools"
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 default = ["x402"]
