@@ -12,13 +12,12 @@ import subprocess
 import sys
 
 
-def charge(amount: str) -> dict:
+def charge(amount: str, dry_run: bool = False) -> dict:
     """Run `payg charge` and return the parsed JSON response."""
-    result = subprocess.run(
-        ["payg", "charge", amount, "--output", "json"],
-        capture_output=True,
-        text=True,
-    )
+    cmd = ["payg", "charge", amount, "--output", "json"]
+    if dry_run:
+        cmd.append("--dry-run")
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
     try:
         response = json.loads(result.stdout)
@@ -42,7 +41,11 @@ def main():
 
     text = " ".join(sys.argv[1:])
 
-    # Charge before doing work
+    # Dry-run first to estimate cost (recommended for agents)
+    estimate = charge("0.001 USDC", dry_run=True)
+    print(f"Estimated cost: {estimate.get('amount', 'unknown')}", file=sys.stderr)
+
+    # Charge for real
     receipt = charge("0.001 USDC")
     tx_hash = receipt["tx_hash"]
 
