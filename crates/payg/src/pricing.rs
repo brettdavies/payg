@@ -18,6 +18,18 @@ pub struct ParsedPrice {
 /// - `"0.01 ETH"` -> 10000000000000000 (18 decimals)
 /// - `"free"` -> 0
 /// - `"1000"` -> 1000 (raw units, assumed USDC)
+///
+/// # Examples
+///
+/// ```
+/// use payg::pricing::parse_price;
+///
+/// let price = parse_price("0.001 USDC").unwrap();
+/// assert_eq!(price.token, "USDC");
+///
+/// let free = parse_price("free").unwrap();
+/// assert!(free.amount.is_zero());
+/// ```
 pub fn parse_price(input: &str) -> Result<ParsedPrice, PaygError> {
     let input = input.trim();
 
