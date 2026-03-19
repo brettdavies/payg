@@ -30,3 +30,4 @@ examples/*/Cargo.lock
 
 # Claude Code
 .claude/
+docs/solutions
