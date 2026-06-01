@@ -11,7 +11,7 @@ repository: https://github.com/brettdavies/payg
 ## Running payg
 
 ```bash
-# Initialize a wallet (interactive — prompts for keyfile password)
+# Initialize a wallet (interactive; prompts for keyfile password)
 payg init
 
 # Inspect the current wallet address (env- or keyfile-loaded)
@@ -37,8 +37,8 @@ Bare `payg` (no arguments) prints help and exits.
 
 Rust workspace with 2 crates:
 
-- `crates/payg` — library crate (payment logic, config, wallet).
-- `crates/payg-cli` — binary crate (`payg` CLI).
+- `crates/payg`: library crate (payment logic, config, wallet).
+- `crates/payg-cli`: binary crate (`payg` CLI).
 
 The library is consumable from downstream Rust crates; the binary is one consumer among potentially several. Other
 agent-callable consumers shell out to `payg charge` regardless of host language.
@@ -64,7 +64,7 @@ Two ways to load a wallet, selected by what's available in the environment.
 | Env var        | `PAYG_PRIVATE_KEY=<hex>` set in the environment             | 10–30 ms   | Agents, CI      |
 | Keyfile (JSON) | `~/.payg/keyfile.json` + `PAYG_KEY_PASSWORD` for decryption | 200–500 ms | Humans, dev     |
 
-`crates/payg/src/wallet.rs` is sync (no async on the wallet load path). Keyfile decryption uses scrypt — the latency
+`crates/payg/src/wallet.rs` is sync (no async on the wallet load path). Keyfile decryption uses scrypt; the latency
 floor is the KDF, not I/O. Env var is the agent-recommended path because scrypt's ~210–530ms per invocation adds up
 across automated calls.
 
@@ -109,40 +109,41 @@ Agent-callable consumers should set `PAYG_OUTPUT=json` to get parseable output w
 
 ## Architecture
 
-- `crates/payg/src/backend.rs` — `Backend` enum (`X402(...)` / `Eth(...)`); `match` dispatch.
-- `crates/payg/src/backend/x402.rs` — x402-chain-eip155 ERC-3009 signing + facilitator POST.
-- `crates/payg/src/backend/eth.rs` — alloy-rs direct ETH transfer (`.connect(&str)` to avoid `reqwest` leak).
-- `crates/payg/src/wallet.rs` — sync wallet loading: env var path and scrypt-decrypted keyfile path.
-- `crates/payg/src/charge.rs` — `ChargeRequest` → `Receipt` (tx_hash); no `Token` enum (backend is the disambiguator),
-  no chain_id (network selects it).
-- `crates/payg/src/config.rs` — TOML config loader; CLI > env > config > default precedence.
-- `crates/payg/src/network.rs` — network registry: chain id, default RPC, default facilitator URL.
-- `crates/payg/src/pricing.rs` — amount normalization across token decimals.
-- `crates/payg/src/error.rs` — `PaygError`. `Http(String)` not `Http(reqwest::Error)` — avoids a `reqwest` feature-flag
-  leak across the public error surface.
-- `crates/payg-cli/src/cli.rs` — clap-based CLI definition.
-- `crates/payg-cli/src/commands/{address,balance,charge,init}.rs` — per-command handlers.
+- `crates/payg/src/backend.rs`: `Backend` enum (`X402(...)` / `Eth(...)`); `match` dispatch.
+- `crates/payg/src/backend/x402.rs`: x402-chain-eip155 ERC-3009 signing + facilitator POST.
+- `crates/payg/src/backend/eth.rs`: alloy-rs direct ETH transfer (`.connect(&str)` to avoid `reqwest` leak).
+- `crates/payg/src/wallet.rs`: sync wallet loading covering env var path and scrypt-decrypted keyfile path.
+- `crates/payg/src/charge.rs`: `ChargeRequest` → `Receipt` (tx_hash); no `Token` enum (backend is the disambiguator), no
+  chain_id (network selects it).
+- `crates/payg/src/config.rs`: TOML config loader; CLI > env > config > default precedence.
+- `crates/payg/src/network.rs`: network registry covering chain id, default RPC, default facilitator URL.
+- `crates/payg/src/pricing.rs`: amount normalization across token decimals.
+- `crates/payg/src/error.rs`: `PaygError`. `Http(String)` not `Http(reqwest::Error)`, which avoids a `reqwest`
+  feature-flag leak across the public error surface.
+- `crates/payg-cli/src/cli.rs`: clap-based CLI definition.
+- `crates/payg-cli/src/commands/{address,balance,charge,init}.rs`: per-command handlers.
 
 ## Key conventions
 
-- `PaygError::Http(String)` not `Http(reqwest::Error)` — avoids feature-flag leak across the public error type.
-- Pin `rand = "0.8"` — alloy-rs compatibility (alloy uses 0.8 traits; mixing 0.9 produces trait mismatches).
-- ETH provider uses `.connect(&str)` not `.connect_http(reqwest::Url)` — avoids reqwest leak through the alloy facade.
+- `PaygError::Http(String)` not `Http(reqwest::Error)`, which avoids a feature-flag leak across the public error type.
+- Pin `rand = "0.8"` for alloy-rs compatibility (alloy uses 0.8 traits; mixing 0.9 produces trait mismatches).
+- ETH provider uses `.connect(&str)` not `.connect_http(reqwest::Url)`, which avoids reqwest leak through the alloy
+  facade.
 - Use individual `alloy-*` sub-crates (`alloy-provider`, `alloy-signer-local`, `alloy-primitives`,
   `alloy-rpc-types-eth`), not the `alloy` umbrella crate.
 - x402 facilitator pays gas; the signer only signs ERC-3009 auth locally. No ETH balance required for x402 charges.
-- `current_thread` tokio runtime in the CLI — one sequential operation per invocation; multi-thread overhead is
-  unnecessary.
+- `current_thread` tokio runtime in the CLI, since each invocation runs one sequential operation; multi-thread overhead
+  is unnecessary.
 
 ## Versioning
 
 - **Scheme:** Semantic versioning (major.minor.patch).
-- **Tool:** [release-plz](https://release-plz.dev/) — automated via GitHub Actions.
+- **Tool:** [release-plz](https://release-plz.dev/), automated via GitHub Actions.
 - **Both crates version in lockstep** via `version_group` in `release-plz.toml`.
 - **Changelog:** Single root `CHANGELOG.md`, auto-generated from Conventional Commits by release-plz (no `cliff.toml`,
   no `generate-changelog.sh`).
 - **Release flow:** merge to `main` → release-plz opens Release PR → merge PR → git tag + GitHub release.
-- **Not published to crates.io yet** — `git_only = true` in `release-plz.toml`.
+- **Not published to crates.io yet**: `git_only = true` in `release-plz.toml`.
 - **Merge strategy:** Standard merge commit to `main` (not squash/rebase). Squash creates a race condition in
   release-plz where unreviewed commits can slip into a release. Enforced by ruleset.
 
@@ -212,9 +213,9 @@ title should follow Conventional Commits: `type(scope): description`.
 
 ## Branch workflow
 
-- `dev` — integration branch; PRs target here.
-- `main` — protected; receives merge commits from `dev` only via PR.
-- Feature branches — branch from `dev`, PR back to `dev`.
+- `dev`: integration branch; PRs target here.
+- `main`: protected; receives merge commits from `dev` only via PR.
+- Feature branches: branch from `dev`, PR back to `dev`.
 
 **NEVER commit directly to `main`.** All work happens on feature branches off `dev`. The pre-commit hook blocks direct
 commits to `main`, and the GitHub ruleset requires PRs with passing CI. The only path to `main` is `dev` → `main` via

@@ -8,7 +8,7 @@ CI (fmt, clippy, test across the feature matrix, MSRV check, doc, cargo-deny) ca
 repo. This checklist covers what CI structurally can't:
 
 - Behavior against real RPC endpoints and the x402 facilitator (CI mocks both).
-- Backend-feature interaction: `x402`-only, `eth`-only, and `--all-features` configurations need explicit eyes — the
+- Backend-feature interaction: `x402`-only, `eth`-only, and `--all-features` configurations need explicit eyes; the
   matrix runs them but doesn't sanity-check their public APIs against each other.
 - Wallet-loading paths that depend on real keyfiles or live env vars.
 - Cross-network sanity: defaults align between `base-sepolia` (testnet) and `base` (mainnet, real funds).
@@ -32,9 +32,9 @@ Every `!:` commit drives the major-version decision and gets called out in the R
 
 ### Public-API surface
 
-- [ ] `crates/payg/src/lib.rs` — every newly exported symbol is intentional. Library consumers depend on the public
+- [ ] `crates/payg/src/lib.rs`: every newly exported symbol is intentional. Library consumers depend on the public
   surface; accidental `pub` additions become a SemVer commitment.
-- [ ] `crates/payg/src/error.rs` — any new `PaygError` variant is reviewed for whether it leaks a feature-flagged type
+- [ ] `crates/payg/src/error.rs`: any new `PaygError` variant is reviewed for whether it leaks a feature-flagged type
   (e.g., `reqwest::Error` would re-introduce the feature-flag leak avoided per [`AGENTS.md`](./AGENTS.md) § Key
   Conventions).
 - [ ] No new `pub use` re-exports from feature-gated modules without `#[cfg(feature = ...)]`.
@@ -55,7 +55,7 @@ The CI matrix runs three configurations. Confirm each works end-to-end, not just
 - [ ] `PAYG_NETWORK` defaults still point at `base-sepolia` (testnet). Anyone running `payg charge` without an explicit
   network does **not** hit mainnet by accident.
 - [ ] `PAYG_MAX_CHARGE` default ceiling is still in place and is documented in the README.
-- [ ] If the x402 facilitator URL default has been changed, the new default is a known-good upstream — not a community
+- [ ] If the x402 facilitator URL default has been changed, the new default is a known-good upstream, not a community
   fork URL captured during testing.
 - [ ] If a new network has been added (mainnet, other L2), the chain ID, default RPC, and facilitator URL combination is
   end-to-end verified in `cargo test -- --ignored` against the actual chain (or explicitly deferred and called out in
@@ -98,8 +98,7 @@ These items duplicate steps elsewhere deliberately: easy to skip, expensive to r
 Run immediately after the Release PR merges and `release.yml` runs:
 
 - [ ] `release.yml` green end-to-end. `gh run watch <id> --exit-status`, then verify with `gh run view <id> --json
-  conclusion --jq .conclusion` (the watcher exit code alone is not authoritative — see global CLAUDE.md § CI after
-  push).
+  conclusion --jq .conclusion` (the watcher exit code alone is not authoritative; see global CLAUDE.md § CI after push).
 - [ ] GitHub Release exists at `v<version>` and the release notes carry the curated `CHANGELOG.md` section.
 - [ ] If crates.io publish is enabled: the new version appears at `https://crates.io/crates/payg` and
   `https://crates.io/crates/payg-cli`. `cargo install payg-cli --version <new>` from a clean environment resolves and
@@ -108,6 +107,6 @@ Run immediately after the Release PR merges and `release.yml` runs:
 
 ## Related docs
 
-- [`RELEASES.md`](./RELEASES.md) — operational runbook this checklist gates.
-- [`RELEASES-RATIONALE.md`](./RELEASES-RATIONALE.md) — release-flow rationale.
-- [`AGENTS.md`](./AGENTS.md) — project conventions, environment variables, feature flags.
+- [`RELEASES.md`](./RELEASES.md): operational runbook this checklist gates.
+- [`RELEASES-RATIONALE.md`](./RELEASES-RATIONALE.md): release-flow rationale.
+- [`AGENTS.md`](./AGENTS.md): project conventions, environment variables, feature flags.
