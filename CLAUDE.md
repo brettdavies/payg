@@ -36,22 +36,22 @@ CLI flag > env var > config file (`~/.payg/config.toml`) > default.
 
 ## Environment Variables
 
-| Variable | Purpose |
-|---|---|
-| `PAYG_PRIVATE_KEY` | Hex private key (recommended for agents) |
-| `PAYG_KEY_PASSWORD` | Keyfile decryption password |
-| `PAYG_NETWORK` | Target network: `base`, `base-sepolia` |
-| `PAYG_OUTPUT` | Output format: `text`, `json` |
-| `PAYG_MAX_CHARGE` | Safety ceiling override (e.g. `5.00 USDC`) |
-| `PAYG_RPC_URL` | RPC endpoint override |
-| `PAYG_FACILITATOR_URL` | x402 facilitator URL override |
+| Variable               | Purpose                                    |
+| ---------------------- | ------------------------------------------ |
+| `PAYG_PRIVATE_KEY`     | Hex private key (recommended for agents)   |
+| `PAYG_KEY_PASSWORD`    | Keyfile decryption password                |
+| `PAYG_NETWORK`         | Target network: `base`, `base-sepolia`     |
+| `PAYG_OUTPUT`          | Output format: `text`, `json`              |
+| `PAYG_MAX_CHARGE`      | Safety ceiling override (e.g. `5.00 USDC`) |
+| `PAYG_RPC_URL`         | RPC endpoint override                      |
+| `PAYG_FACILITATOR_URL` | x402 facilitator URL override              |
 
 ## Networks
 
-| Name | Chain ID | Default |
-|---|---|---|
-| `base` | 8453 | No (mainnet, real funds) |
-| `base-sepolia` | 84532 | Yes (testnet) |
+| Name           | Chain ID | Default                  |
+| -------------- | -------- | ------------------------ |
+| `base`         | 8453     | No (mainnet, real funds) |
+| `base-sepolia` | 84532    | Yes (testnet)            |
 
 ## Key Conventions
 
@@ -69,7 +69,8 @@ CLI flag > env var > config file (`~/.payg/config.toml`) > default.
 - **Changelog:** Single root `CHANGELOG.md`, auto-generated from Conventional Commits
 - **Release flow:** merge to `main` → release-plz opens Release PR → merge PR → git tag + GitHub release
 - **Not published to crates.io yet** — `git_only = true` in `release-plz.toml`
-- **Merge strategy:** Standard merge commit to `main` (not squash/rebase) — squash creates a race condition in release-plz where unreviewed commits can slip into a release. Enforced by ruleset.
+- **Merge strategy:** Standard merge commit to `main` (not squash/rebase) — squash creates a race condition in
+  release-plz where unreviewed commits can slip into a release. Enforced by ruleset.
 
 ## Git Hooks
 
@@ -94,12 +95,15 @@ git config commit.gpgsign true
 
 ## PR Template
 
-A pull request template lives in `.github/pull_request_template.md`. GitHub auto-populates it when opening a PR. The PR title should follow Conventional Commits: `type(scope): description`.
+A pull request template lives in `.github/pull_request_template.md`. GitHub auto-populates it when opening a PR. The PR
+title should follow Conventional Commits: `type(scope): description`.
 
 ## Branch Workflow
 
-- `development` — integration branch; PRs target here
-- `main` — protected; receives merge commits from `development` only via PR
-- Feature branches — branch from `development`, PR back to `development`
+- `dev` — integration branch; PRs target here
+- `main` — protected; receives merge commits from `dev` only via PR
+- Feature branches — branch from `dev`, PR back to `dev`
 
-**NEVER commit directly to `main`.** All work happens on feature branches off `development`. The pre-commit hook blocks direct commits to `main`, and the GitHub ruleset requires PRs with passing CI. The only path to `main` is `development` → `main` via merge PR.
+**NEVER commit directly to `main`.** All work happens on feature branches off `dev`. The pre-commit hook blocks direct
+commits to `main`, and the GitHub ruleset requires PRs with passing CI. The only path to `main` is `dev` → `main` via
+merge PR.
