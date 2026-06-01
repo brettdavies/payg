@@ -79,7 +79,7 @@ These items duplicate steps elsewhere deliberately: easy to skip, expensive to r
 - [ ] `CHANGELOG.md` content matches the commits since `$LAST_TAG`. No user-facing change is missing because a commit
   was typed as `chore` instead of `feat`/`fix`. See
   [`RELEASES-RATIONALE.md` § Why `feat`/`fix` are preferred over `chore`](./RELEASES-RATIONALE.md#why-featfix-are-preferred-over-chore).
-- [ ] `Cargo.toml` MSRV (`rust-version = "1.88.0"`) is unchanged, or if bumped, the bump is intentional and called out
+- [ ] `Cargo.toml` MSRV (`rust-version = "1.96.0"`) is unchanged, or if bumped, the bump is intentional and called out
   in the Release PR.
 - [ ] `rand` is still pinned to `0.8` (alloy-rs compatibility). If a transitive bump tried to advance it, the lockfile
   must still resolve to a `0.8.x` line.

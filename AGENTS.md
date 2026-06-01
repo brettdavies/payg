@@ -152,7 +152,7 @@ Agent-callable consumers should set `PAYG_OUTPUT=json` to get parseable output w
 - Formatted with rustfmt (`cargo fmt --all -- --check`); style edition pinned in `rustfmt.toml`.
 - All three feature-matrix configurations pass `cargo test` (default, `--no-default-features --features eth`,
   `--all-features`).
-- MSRV verified (`cargo +1.88.0 check --all-features`); MSRV is declared in workspace `Cargo.toml`.
+- MSRV verified (`cargo +1.96.0 check --all-features`); MSRV is declared in workspace `Cargo.toml`.
 - `cargo deny check` passes (advisories, licenses, bans, sources).
 - `cargo doc --no-deps --all-features` clean with `RUSTDOCFLAGS=-D warnings`.
 

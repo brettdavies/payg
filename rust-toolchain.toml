@@ -1,15 +1,11 @@
 # Supply-chain pin: rustc version is immutable; rustup verifies component SHA256s
 # from the distribution manifest (the "lockfile" for a toolchain release).
-# Bump via reviewed PR only after a new stable has aged ≥7 days.
+# Bump via reviewed PR only after a new stable has aged at least 7 days.
 #
-# Pinned to PAYG's MSRV (1.88.0, declared in workspace Cargo.toml). This makes
-# local dev and the CI `test` / `lint` / `doc` / `deny` jobs all build against
-# the same minimum-supported version PAYG promises downstream. The CI `msrv`
-# job becomes a consistency check rather than a separate enforcement step.
-#
-# If PAYG ever needs to test on a newer stable while keeping MSRV at 1.88.0,
-# bump this pin AND add `RUSTUP_TOOLCHAIN=1.88.0` (or `cargo +1.88.0`) to the
-# CI msrv job to override the file on that job only.
+# Channel is the MSRV PAYG promises to library consumers (also declared as
+# rust-version in the workspace Cargo.toml). Keeping the two values equal means
+# the CI msrv job and the test/lint/doc/deny jobs all build against the same
+# version, and the file pin is the single source of truth.
 [toolchain]
-channel = "1.88.0"
+channel = "1.96.0" # released 2026-05-28
 components = ["rustfmt", "clippy"]
