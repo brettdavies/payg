@@ -1,0 +1,14 @@
+# Verifies commits in PRs to main came from squash-merged PRs to dev
+# (have (#N) references). Thin caller of the centralized reusable workflow.
+name: Guard main commit provenance
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  guard-provenance:
+    uses: brettdavies/.github/.github/workflows/guard-main-provenance.yml@main
