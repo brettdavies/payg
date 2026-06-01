@@ -54,15 +54,15 @@ pass "doc"
 
 # 6. Security audit (matches CI's `deny` job). Skip if cargo-deny not installed.
 if cargo deny --version &>/dev/null; then
-    cargo deny check --quiet 2>&1 || fail "cargo deny check"
+    cargo deny check 2>&1 || fail "cargo deny check"
     pass "deny"
 else
     echo "  - deny (skipped, cargo-deny not installed)"
 fi
 
-# 7. Shellcheck — lint shell scripts (and this hook itself). Severity threshold
-# "warning" catches real bugs while ignoring info/style noise. Skip silently if
-# shellcheck isn't installed.
+# 7. Lint shell scripts (and this hook itself) using shellcheck. Severity
+# threshold "warning" catches real bugs while ignoring info/style noise. Skip
+# silently if the tool is not installed.
 if command -v shellcheck &>/dev/null; then
     mapfile -t shell_files < <({
         git ls-files '*.sh' 2>/dev/null
