@@ -37,7 +37,7 @@
 
 ## Checklist
 
-- [ ] Code follows project conventions (see `CLAUDE.md`)
+- [ ] Code follows project conventions (see `AGENTS.md`)
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
 - [ ] Tests added/updated and passing
 
