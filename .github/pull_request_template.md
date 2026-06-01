@@ -1,6 +1,20 @@
 ## Summary
 
-<!-- Brief overview: what does this PR introduce? -->
+<!-- Brief overview: what does this PR introduce?
+
+     SCOPE: Describe the net diff only — what the merged result looks
+     like compared to the base branch. NOT commit history, intermediate
+     state, or how the cherry-picks were assembled.
+
+     EXCLUDE all verification artifacts:
+- Triple-diff output / stats (A, B, C blocks)
+- Leak-check output ("no guarded paths leaked", "guard-main-docs runs clean")
+- Patch-id cherry-check counts
+- Pre-push gate results, CI status, prose-scrub findings
+- Any "I ran X and it returned Y" narration
+
+     Anomalies get fixed before push, not audit-trailed in the body.
+-->
 
 ## Type of Change
 
@@ -35,6 +49,5 @@ Examples:
 - fix(cli): resolve config file precedence
 - docs(readme): update installation instructions
 
-Breaking changes: add a BREAKING CHANGE footer to the commit message body.
-See https://www.conventionalcommits.org/en/v1.0.0/#specification
--->
+Breaking changes: add a BREAKING CHANGE footer to the commit message body. See
+https://www.conventionalcommits.org/en/v1.0.0/#specification -->

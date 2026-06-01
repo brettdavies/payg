@@ -101,3 +101,5 @@ A pull request template lives in `.github/pull_request_template.md`. GitHub auto
 - `development` — integration branch; PRs target here
 - `main` — protected; receives merge commits from `development` only via PR
 - Feature branches — branch from `development`, PR back to `development`
+
+**NEVER commit directly to `main`.** All work happens on feature branches off `development`. The pre-commit hook blocks direct commits to `main`, and the GitHub ruleset requires PRs with passing CI. The only path to `main` is `development` → `main` via merge PR.
