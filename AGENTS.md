@@ -74,16 +74,26 @@ CLI flag > env var > config file (`~/.payg/config.toml`) > default.
 
 ## Git Hooks
 
-Project-local hooks live in `.githooks/`. After cloning, activate them:
+Project-local hooks live in `scripts/hooks/`. After cloning, activate them:
 
 ```sh
-git config core.hooksPath .githooks
+git config core.hooksPath scripts/hooks
 ```
 
 **Pre-commit hook** enforces:
 
 - No direct commits to `main` (use a feature branch + PR)
 - Commit signing must be enabled (`commit.gpgsign = true`)
+
+**Pre-push hook** mirrors the CI pipeline locally:
+
+- `cargo fmt --all -- --check`
+- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo test` across the three-feature matrix (default, eth-only, all-features)
+- `cargo +<msrv> check --all-features` (requires `rustup toolchain install <msrv>`)
+- `cargo doc --no-deps --all-features` with `RUSTDOCFLAGS=-D warnings`
+- `cargo deny check` (skipped if cargo-deny not installed)
+- `shellcheck --severity=warning` on tracked shell scripts (skipped if not installed)
 
 **Agent/CI signing setup:**
 
