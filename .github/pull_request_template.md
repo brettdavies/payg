@@ -1,8 +1,8 @@
 ## Summary
 
-<!-- Brief overview: what does this PR introduce?
+<!-- Provide a brief overview of the changes in this PR. What feature/fix/improvement does this introduce?
 
-     SCOPE: Describe the net diff only — what the merged result looks
+     SCOPE: Describe the net diff only: what the merged result looks
      like compared to the base branch. NOT commit history, intermediate
      state, or how the cherry-picks were assembled.
 
@@ -16,30 +16,146 @@
      Anomalies get fixed before push, not audit-trailed in the body.
 -->
 
+## Changelog
+
+<!-- Reviewer-facing summary of user-visible changes.
+
+     NOTE: PAYG uses release-plz, which generates CHANGELOG.md from Conventional
+     Commit subjects (`feat`/`fix`/`docs`/`perf`/`refactor`/`test`/`revert`).
+     This `## Changelog` section is NOT parsed by tooling; it exists so
+     reviewers can see at a glance what shipped. The commit subjects on the
+     branch are the source of truth.
+
+     AUDIENCE: Users and operators. Write from their perspective.
+
+     INCLUDE: new features, changed behavior, breaking changes, fixed bugs,
+     new/removed config, new dependencies users need to know about.
+
+     EXCLUDE: internal refactors, test additions, code cleanup, CI changes,
+     regenerated files, implementation details (unreachable!() arms, import
+     reordering, cfg gates, etc.). Document those in the PR body text or
+     Files Modified section. NOT here.
+
+     RULES:
+- 1-5 bullets per PR. Fewer is better. One-line fixes get one bullet.
+- Delete empty ### sections entirely; don't leave blank categories.
+- Each bullet starts with a verb: Add, Fix, Change, Remove, Deprecate.
+- Don't duplicate the PR title; expand on it or provide context.
+- If the PR has NO user-facing changes (pure refactor, test-only, CI), leave this section empty or omit it. The PR still
+  appears in git history; it just won't clutter the changelog. -->
+
+### Added
+
+-
+
+### Changed
+
+-
+
+### Fixed
+
+-
+
+### Documentation
+
+-
+
 ## Type of Change
 
-- [ ] `feat`: New feature
-- [ ] `fix`: Bug fix
+<!-- Check the type that applies to this PR -->
+
+- [ ] `feat`: New feature (non-breaking change which adds functionality)
+- [ ] `fix`: Bug fix (non-breaking change which fixes an issue)
 - [ ] `refactor`: Code refactoring (no functional changes)
-- [ ] `style`: Formatting changes (no functional changes)
 - [ ] `perf`: Performance improvement
 - [ ] `docs`: Documentation update
 - [ ] `test`: Adding or updating tests
 - [ ] `chore`: Maintenance tasks (dependencies, config, etc.)
 - [ ] `ci`: CI/CD configuration changes
+- [ ] `style`: Code style/formatting changes
 - [ ] `build`: Build system changes
+- [ ] `BREAKING CHANGE`: Breaking API change (requires major version bump)
+
+## Related Issues/Stories
+
+<!-- Link to related issues, stories, or documentation -->
+
+- Story:
+- Issue:
+- Architecture:
+- Related PRs:
 
 ## Testing
 
-- [ ] `cargo test --all-features` passing
-- [ ] `cargo clippy --all-targets --all-features -- -D warnings` clean
-- [ ] `cargo fmt --all --check` clean
+<!-- Describe the testing approach and results -->
+
+- [ ] Unit tests added/updated
+- [ ] Integration tests added/updated
+- [ ] Manual testing completed
+- [ ] All tests passing
+
+**Test Summary:**
+
+- Unit tests: X passing
+- Integration tests: Y passing
+- Coverage: Z%
+
+## Files Modified
+
+<!-- List the main files modified in this PR -->
+
+**Modified:**
+
+**Created:**
+
+**Renamed:**
+
+**Deleted:**
+
+## Key Features
+
+<!-- Optional: Highlight key features or capabilities introduced -->
+
+-
+
+## Benefits
+
+<!-- Optional: Describe the benefits (performance, security, compliance, UX, etc.) -->
+
+-
+
+## Breaking Changes
+
+<!-- If this PR contains breaking changes, describe them and the migration path -->
+
+- [ ] No breaking changes
+- [ ] Breaking changes described below:
+
+## Deployment Notes
+
+<!-- Any special deployment considerations, migrations, or configuration changes needed -->
+
+- [ ] No special deployment steps required
+- [ ] Deployment steps documented below:
+
+## Screenshots/Recordings
+
+<!-- Optional: Add screenshots or recordings for UI changes -->
 
 ## Checklist
 
-- [ ] Code follows project conventions (see `AGENTS.md`)
+- [ ] Code follows project conventions and style guidelines
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+- [ ] Self-review of code completed
 - [ ] Tests added/updated and passing
+- [ ] No new warnings or errors introduced
+- [ ] Changes are backward compatible (or breaking changes documented)
+
+## Additional Context
+
+<!-- Optional: Add any additional context, screenshots, or information -->
+
+---
 
 <!--
 PR Title Format: <type>(<scope>): <description>
@@ -48,6 +164,8 @@ Examples:
 - feat(wallet): add multi-key support
 - fix(cli): resolve config file precedence
 - docs(readme): update installation instructions
+- refactor(backend): simplify ETH dispatch
+- chore(deps): bump rand to 0.8.6
 
 Breaking changes: add a BREAKING CHANGE footer to the commit message body. See
 https://www.conventionalcommits.org/en/v1.0.0/#specification -->

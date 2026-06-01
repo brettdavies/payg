@@ -1,3 +1,16 @@
+# cargo-deny policy. See `cargo deny check` documentation:
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# Empty `targets` checks all targets. Set explicit triples if PAYG ever
+# needs target-conditional dependency analysis.
+targets = []
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
 [advisories]
 yanked = "deny"
 unmaintained = "workspace"
@@ -40,6 +53,9 @@ multiple-versions = "warn"
 wildcards = "warn"
 allow-wildcard-paths = true
 highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow-workspace = false
 deny = [
     { crate = "openssl", wrappers = ["native-tls"], reason = "use rustls instead" },
     { crate = "openssl-sys", wrappers = ["openssl", "native-tls"], reason = "use rustls instead" },
@@ -50,3 +66,8 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
+
+[sources.allow-org]
+github = []
+gitlab = []
+bitbucket = []

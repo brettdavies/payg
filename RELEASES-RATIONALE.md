@@ -91,7 +91,7 @@ The reasons:
 - The combined `CHANGELOG.md` (`changelog_include = ["payg-cli"]`) tells a single story per release.
 
 `payg-cli`'s `git_tag_enable = false` and `git_release_enable = false` prevent release-plz from creating duplicate tags
-/ releases for the CLI crate — `payg` owns the tag for the lockstep pair.
+/ releases for the CLI crate; `payg` owns the tag for the lockstep pair.
 
 ### Why `changelog_update = false` on `payg-cli`
 
@@ -121,7 +121,7 @@ single source of truth is the commit subject prefix:
 
 To fix a wrong `CHANGELOG.md` entry, fix the input: edit the commit subject (rare, and only on the integration merge
 before it hits `main`), then close + reopen the Release PR so release-plz regenerates. Do **not** edit `CHANGELOG.md`
-directly — the next release-plz run will overwrite it.
+directly; the next release-plz run will overwrite it.
 
 ### Why `cliff.toml`-style skips apply
 
@@ -190,11 +190,11 @@ These are deliberate omissions from the current release model, captured here so 
 
 Committing the JSON alongside code means ruleset changes land via the same review process as workflow changes. A
 `chore(ci): tighten protect-main` change goes through `dev` → `main` like anything else. The `gh api -X PUT` step that
-pushes the ruleset to GitHub is a manual side-effect run by a maintainer after merge — there is no auto-apply.
+pushes the ruleset to GitHub is a manual side-effect run by a maintainer after merge; there is no auto-apply.
 
 ### Why `dev` is protected more lightly than `main`
 
-The `protect-dev.json` ruleset blocks deletion, blocks force-push, and requires signed commits — but does not require a
+The `protect-dev.json` ruleset blocks deletion, blocks force-push, and requires signed commits, but does not require a
 PR. Engineering docs land directly. The PR-only norm for code changes is honored by convention plus the pre-commit hook
 (which blocks direct commits to `main`, not `dev`).
 
@@ -203,10 +203,10 @@ possible without involving an admin bypass. `main` has no such escape hatch by d
 
 ## Related docs
 
-- [`RELEASES.md`](./RELEASES.md) — operational runbook (commands, paths, decision tables).
-- [`RELEASES-PREFLIGHT.md`](./RELEASES-PREFLIGHT.md) — pre-tag gate checklist.
-- [`AGENTS.md`](./AGENTS.md) — project conventions, environment variables, feature flags.
-- [`release-plz.toml`](./release-plz.toml) — release-plz configuration (single source of truth for changelog grouping).
+- [`RELEASES.md`](./RELEASES.md): operational runbook (commands, paths, decision tables).
+- [`RELEASES-PREFLIGHT.md`](./RELEASES-PREFLIGHT.md): pre-tag gate checklist.
+- [`AGENTS.md`](./AGENTS.md): project conventions, environment variables, feature flags.
+- [`release-plz.toml`](./release-plz.toml): release-plz configuration (single source of truth for changelog grouping).
 -
-  [`docs/plans/2026-06-01-chore-migrate-to-reusable-workflows-plan.md`](./docs/plans/2026-06-01-chore-migrate-to-reusable-workflows-plan.md)
-  — workflow-migration gap and the items it unblocks.
+  [`docs/plans/2026-06-01-chore-migrate-to-reusable-workflows-plan.md`](./docs/plans/2026-06-01-chore-migrate-to-reusable-workflows-plan.md):
+  workflow-migration gap and the items it unblocks.

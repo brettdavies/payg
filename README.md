@@ -1,12 +1,15 @@
 # PAYG
 
-Pay-as-you-go crypto micropayments for CLI tools. Charge per invocation on Base L2 with USDC (via [x402](https://www.x402.org/)) or direct ETH transfers.
+Pay-as-you-go crypto micropayments for CLI tools. Charge per invocation on Base L2 with USDC (via
+[x402](https://www.x402.org/)) or direct ETH transfers.
 
 ## How It Works
 
-**Tool developers** add a `payg.toml` to their project and call `payg::charge()` (Rust) or shell out to `payg charge` (any language).
+**Tool developers** add a `payg.toml` to their project and call `payg::charge()` (Rust) or shell out to `payg charge`
+(any language).
 
-**End users** run `payg init` once to create a wallet, fund it with USDC on Base, and every tool invocation automatically pays the developer.
+**End users** run `payg init` once to create a wallet, fund it with USDC on Base, and every tool invocation
+automatically pays the developer.
 
 Payments go peer-to-peer on Base L2. Gas costs $0.001 or less per transaction.
 
@@ -24,7 +27,7 @@ cargo install payg-cli
 cargo add payg
 ```
 
-Requires Rust 1.88.0+.
+Requires Rust 1.96.0+.
 
 ## Quick Start
 
@@ -78,9 +81,9 @@ payg charge
 
 All commands accept these flags:
 
-| Flag | Env var | Default | Description |
-|------|---------|---------|-------------|
-| `--output` | `PAYG_OUTPUT` | `text` | Output format: `text`, `json` |
+| Flag        | Env var        | Default        | Description                            |
+| ----------- | -------------- | -------------- | -------------------------------------- |
+| `--output`  | `PAYG_OUTPUT`  | `text`         | Output format: `text`, `json`          |
 | `--network` | `PAYG_NETWORK` | `base-sepolia` | Target network: `base`, `base-sepolia` |
 
 Precedence: CLI flag > env var > config file > default.
@@ -138,10 +141,10 @@ recipient = "0xYOUR_WALLET_ADDRESS"
 default_price = "0.001 USDC"
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `recipient` | Yes | Wallet address to receive payments |
-| `default_price` | No | Default charge amount (e.g. `"0.001 USDC"`) |
+| Field           | Required | Description                                 |
+| --------------- | -------- | ------------------------------------------- |
+| `recipient`     | Yes      | Wallet address to receive payments          |
+| `default_price` | No       | Default charge amount (e.g. `"0.001 USDC"`) |
 
 ### User config (`~/.payg/config.toml`)
 
@@ -153,27 +156,27 @@ max_charge = "1.00 USDC"
 network = "base-sepolia"
 ```
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `keyfile` | `~/.payg/keyfile.json` | Path to encrypted keyfile |
-| `max_charge` | `1.00 USDC` | Safety ceiling per charge |
-| `network` | `base-sepolia` | Default network (`base`, `base-sepolia`) |
-| `facilitator_url` | `https://x402.org/facilitator` | x402 facilitator endpoint |
-| `rpc_url` | Per-network default | Base RPC endpoint override |
+| Field             | Default                        | Description                              |
+| ----------------- | ------------------------------ | ---------------------------------------- |
+| `keyfile`         | `~/.payg/keyfile.json`         | Path to encrypted keyfile                |
+| `max_charge`      | `1.00 USDC`                    | Safety ceiling per charge                |
+| `network`         | `base-sepolia`                 | Default network (`base`, `base-sepolia`) |
+| `facilitator_url` | `https://x402.org/facilitator` | x402 facilitator endpoint                |
+| `rpc_url`         | Per-network default            | Base RPC endpoint override               |
 
 ### Environment variables
 
 All config values can be overridden with environment variables:
 
-| Variable | Description |
-|----------|-------------|
-| `PAYG_PRIVATE_KEY` | Hex private key (skips keyfile, recommended for agents) |
-| `PAYG_KEY_PASSWORD` | Keyfile password (skips interactive prompt) |
-| `PAYG_NETWORK` | Target network: `base`, `base-sepolia` (same as `--network`) |
-| `PAYG_OUTPUT` | Output format: `text`, `json` (same as `--output`) |
-| `PAYG_MAX_CHARGE` | Safety ceiling override (e.g. `"5.00 USDC"`) |
-| `PAYG_RPC_URL` | Base RPC endpoint override |
-| `PAYG_FACILITATOR_URL` | x402 facilitator URL override |
+| Variable               | Description                                                  |
+| ---------------------- | ------------------------------------------------------------ |
+| `PAYG_PRIVATE_KEY`     | Hex private key (skips keyfile, recommended for agents)      |
+| `PAYG_KEY_PASSWORD`    | Keyfile password (skips interactive prompt)                  |
+| `PAYG_NETWORK`         | Target network: `base`, `base-sepolia` (same as `--network`) |
+| `PAYG_OUTPUT`          | Output format: `text`, `json` (same as `--output`)           |
+| `PAYG_MAX_CHARGE`      | Safety ceiling override (e.g. `"5.00 USDC"`)                 |
+| `PAYG_RPC_URL`         | Base RPC endpoint override                                   |
+| `PAYG_FACILITATOR_URL` | x402 facilitator URL override                                |
 
 Precedence: CLI flag > env var > config file > default.
 
@@ -203,11 +206,11 @@ println!("tx: {}", receipt.tx_hash);
 
 ### Price formats
 
-| Format | Example | Result |
-|--------|---------|--------|
-| USDC | `"0.001 USDC"` | 1000 units (6 decimals) |
-| ETH | `"0.01 ETH"` | 10^16 wei (18 decimals) |
-| Free | `"free"` | 0 |
+| Format | Example        | Result                  |
+| ------ | -------------- | ----------------------- |
+| USDC   | `"0.001 USDC"` | 1000 units (6 decimals) |
+| ETH    | `"0.01 ETH"`   | 10^16 wei (18 decimals) |
+| Free   | `"free"`       | 0                       |
 
 ### Feature flags
 
@@ -217,21 +220,21 @@ payg = "0.1"                          # Default: x402 (USDC) backend
 payg = { version = "0.1", features = ["eth"] }  # Add ETH backend
 ```
 
-| Feature | Default | Backend |
-|---------|---------|---------|
-| `x402` | Yes | USDC via ERC-3009 + x402 facilitator |
-| `eth` | No | Direct ETH transfer via alloy |
+| Feature | Default | Backend                              |
+| ------- | ------- | ------------------------------------ |
+| `x402`  | Yes     | USDC via ERC-3009 + x402 facilitator |
+| `eth`   | No      | Direct ETH transfer via alloy        |
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Invalid arguments |
-| 42 | Payment failed or exceeds safety ceiling |
-| 77 | Wallet error (missing or decryption failure) |
-| 78 | Configuration error |
+| Code | Meaning                                      |
+| ---- | -------------------------------------------- |
+| 0    | Success                                      |
+| 1    | General error                                |
+| 2    | Invalid arguments                            |
+| 42   | Payment failed or exceeds safety ceiling     |
+| 77   | Wallet error (missing or decryption failure) |
+| 78   | Configuration error                          |
 
 ## Agent Integration
 

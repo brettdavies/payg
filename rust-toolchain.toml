@@ -1,0 +1,11 @@
+# Supply-chain pin: rustc version is immutable; rustup verifies component SHA256s
+# from the distribution manifest (the "lockfile" for a toolchain release).
+# Bump via reviewed PR only after a new stable has aged at least 7 days.
+#
+# Channel is the MSRV PAYG promises to library consumers (also declared as
+# rust-version in the workspace Cargo.toml). Keeping the two values equal means
+# the CI msrv job and the test/lint/doc/deny jobs all build against the same
+# version, and the file pin is the single source of truth.
+[toolchain]
+channel = "1.96.0" # released 2026-05-28
+components = ["rustfmt", "clippy"]

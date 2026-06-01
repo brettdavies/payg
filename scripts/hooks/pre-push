@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Local CI mirror — runs the same checks as the GitHub Actions CI pipeline.
+# Use as a pre-push hook or run manually before pushing.
+#
+# Exit codes: 0 = all pass, 1 = failure
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+pass() { echo -e "  ${GREEN}✓${RESET} $1"; }
+fail() { echo -e "  ${RED}✗${RESET} $1"; exit 1; }
+
+echo -e "${BOLD}Running local CI checks...${RESET}"
+
+# The toolchain is pinned in rust-toolchain.toml. Both local and CI read the
+# same file and install the same version. Rustup verifies component SHA256s
+# from the distribution manifest, so the pin is effectively a SHA pin.
+pass "toolchain ($(rustc --version 2>/dev/null | awk '{print $2}' || echo unknown))"
+
+# 1. Format check
+cargo fmt --all -- --check 2>/dev/null || fail "cargo fmt -- --check"
+pass "fmt"
+
+# 2. Clippy with warnings-as-errors (matches CI's clippy job)
+cargo clippy --all-targets --all-features --quiet -- -D warnings 2>&1 || fail "cargo clippy --all-features -Dwarnings"
+pass "clippy"
+
+# 3. Feature-matrix tests (matches CI's three-axis `test` job)
+cargo test --quiet 2>&1 || fail "cargo test (default features)"
+pass "test (default)"
+
+cargo test --no-default-features --features eth --quiet 2>&1 || fail "cargo test --no-default-features --features eth"
+pass "test (eth only)"
+
+cargo test --all-features --quiet 2>&1 || fail "cargo test --all-features"
+pass "test (all features)"
+
+# 4. MSRV check (matches CI's `msrv` job). Reads `rust-version` from
+# workspace Cargo.toml; the check uses `cargo +<msrv> check --all-features`.
+msrv=$(awk -F\" '/^rust-version *= *"/ {print $2; exit}' Cargo.toml 2>/dev/null || echo "")
+if [ -n "$msrv" ] && rustup toolchain list 2>/dev/null | grep -q "^${msrv}"; then
+    cargo "+${msrv}" check --all-features --quiet 2>&1 || fail "cargo +${msrv} check --all-features"
+    pass "msrv (${msrv})"
+else
+    echo "  - msrv (skipped: install via \`rustup toolchain install ${msrv:-<msrv>}\`)"
+fi
+
+# 5. Doc build (matches CI's `doc` job)
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features --quiet 2>&1 || fail "cargo doc --all-features (RUSTDOCFLAGS=-D warnings)"
+pass "doc"
+
+# 6. Security audit (matches CI's `deny` job). Skip if cargo-deny not installed.
+if cargo deny --version &>/dev/null; then
+    cargo deny check 2>&1 || fail "cargo deny check"
+    pass "deny"
+else
+    echo "  - deny (skipped, cargo-deny not installed)"
+fi
+
+# 7. Lint shell scripts (and this hook itself) using shellcheck. Severity
+# threshold "warning" catches real bugs while ignoring info/style noise. Skip
+# silently if the tool is not installed.
+if command -v shellcheck &>/dev/null; then
+    mapfile -t shell_files < <({
+        git ls-files '*.sh' 2>/dev/null
+        git ls-files 'scripts/hooks/*' 2>/dev/null
+    } | sort -u)
+    if [ ${#shell_files[@]} -gt 0 ]; then
+        shellcheck --severity=warning "${shell_files[@]}" || fail "shellcheck --severity=warning"
+    fi
+    pass "shellcheck"
+else
+    echo "  - shellcheck (skipped: install via \`brew install shellcheck\` or \`apt install shellcheck\`)"
+fi
+
+# 8. Windows cross-check (fast): verify no unconditional use of unix-only APIs
+# inside the workspace crates. Catches libc::SIGPIPE class issues without
+# invoking a Windows toolchain — runs in milliseconds. Step 9 is the
+# comprehensive backstop.
+if rg -n 'libc::(SIGPIPE|SIG_DFL|signal)' --type rust crates/*/src/ 2>/dev/null | rg -v '#\[cfg(unix)\]' | rg -v '// *#\[cfg' | rg -qv '^$'; then
+    violations=$(rg -n 'libc::(SIGPIPE|SIG_DFL|signal)' --type rust crates/*/src/ 2>/dev/null || true)
+    if [ -n "$violations" ]; then
+        while IFS= read -r line; do
+            file=$(echo "$line" | cut -d: -f1)
+            lineno=$(echo "$line" | cut -d: -f2)
+            before=$(sed -n "$((lineno > 3 ? lineno - 3 : 1)),${lineno}p" "$file")
+            if ! echo "$before" | rg -q 'cfg\(unix\)'; then
+                fail "libc unix-only API used without #[cfg(unix)] at $file:$lineno"
+            fi
+        done <<< "$violations"
+    fi
+    pass "windows compat (libc grep)"
+else
+    pass "windows compat (libc grep)"
+fi
+
+# 9. Windows cross-clippy: full type-check of the codebase as if compiling for
+# x86_64-pc-windows-gnu. Catches cfg-gated unused imports, conditional dead
+# code, and any other warning class that only surfaces on Windows. Linux
+# clippy alone misses these because `#[cfg(unix)]` filters out their usage
+# sites locally — the warning only fires on the platform where the gate
+# excludes them.
+#
+# Requirements (one-time setup):
+#   sudo apt install mingw-w64                          # the C linker
+#   rustup target add x86_64-pc-windows-gnu             # the Windows std library
+#
+# If either is missing the step is skipped with a one-line note rather than
+# failing — but local Windows coverage is then absent, and CI's matrix
+# becomes the only backstop. Install both to close that gap.
+if command -v x86_64-w64-mingw32-gcc &>/dev/null \
+    && rustup target list --installed 2>/dev/null | grep -q '^x86_64-pc-windows-gnu$'; then
+    cargo clippy --target x86_64-pc-windows-gnu --all-targets --all-features --quiet -- -D warnings 2>&1 \
+        || fail "cargo clippy --target x86_64-pc-windows-gnu -Dwarnings"
+    pass "windows clippy (cross-target)"
+else
+    echo "  - windows clippy (skipped: install \`mingw-w64\` + \`rustup target add x86_64-pc-windows-gnu\` to enable)"
+fi
+
+echo -e "${BOLD}${GREEN}All checks passed.${RESET}"

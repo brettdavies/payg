@@ -104,8 +104,8 @@ When ready to enable crates.io publish:
 2. Run `cargo publish -p payg` and `cargo publish -p payg-cli` from `main` at the release tag, with a
    `CARGO_REGISTRY_TOKEN` set locally.
 3. Configure Trusted Publishing at `https://crates.io/settings/tokens/trusted-publishing` for both crates.
-4. Flip `git_only = true` → `git_only = false` in `release-plz.toml` (or remove the key — `false` is the default).
-   Commit and ship through a release.
+4. Flip `git_only = true` → `git_only = false` in `release-plz.toml` (or remove the key; `false` is the default). Commit
+   and ship through a release.
 
 Homebrew is a separate decision; the current expectation is the brettdavies homebrew-tap dispatch pattern, which depends
 on the broader workflow migration tracked in `docs/plans/2026-06-01-chore-migrate-to-reusable-workflows-plan.md`.
@@ -114,10 +114,10 @@ on the broader workflow migration tracked in `docs/plans/2026-06-01-chore-migrat
 
 Two rulesets live under `.github/rulesets/` and are applied to the repo via the GitHub API:
 
-- `protect-main.json` — required signatures, linear history not enforced (merge commits permitted from dev), required
+- `protect-main.json`: required signatures, linear history not enforced (merge commits permitted from dev), required
   status checks (`test ()`, `test (--no-default-features --features eth)`, `test (--all-features)`, `lint`, `msrv`,
   `deny`, `doc`), creation / deletion blocked, non-fast-forward blocked.
-- `protect-dev.json` — required signatures, deletion blocked, non-fast-forward blocked.
+- `protect-dev.json`: required signatures, deletion blocked, non-fast-forward blocked.
 
 ### Applying changes
 
@@ -125,7 +125,7 @@ Two rulesets live under `.github/rulesets/` and are applied to the repo via the 
 # First apply (creating a ruleset):
 gh api -X POST repos/brettdavies/payg/rulesets --input .github/rulesets/protect-dev.json
 
-# Subsequent updates (replace by ID — find via `gh api repos/brettdavies/payg/rulesets`):
+# Subsequent updates (replace by ID; find via `gh api repos/brettdavies/payg/rulesets`):
 gh api -X PUT repos/brettdavies/payg/rulesets/<id> --input .github/rulesets/protect-main.json
 ```
 
@@ -144,8 +144,8 @@ consolidation rationale.
 
 ## Related docs
 
-- [`RELEASES-PREFLIGHT.md`](./RELEASES-PREFLIGHT.md) — pre-tag verification gate.
-- [`RELEASES-RATIONALE.md`](./RELEASES-RATIONALE.md) — the WHY behind the release model.
-- [`AGENTS.md`](./AGENTS.md) — project conventions, environment variables, build commands.
-- [`.github/pull_request_template.md`](./.github/pull_request_template.md) — PR body structure.
-- [`release-plz.toml`](./release-plz.toml) — release-plz configuration (single source of truth for changelog grouping).
+- [`RELEASES-PREFLIGHT.md`](./RELEASES-PREFLIGHT.md): pre-tag verification gate.
+- [`RELEASES-RATIONALE.md`](./RELEASES-RATIONALE.md): the WHY behind the release model.
+- [`AGENTS.md`](./AGENTS.md): project conventions, environment variables, build commands.
+- [`.github/pull_request_template.md`](./.github/pull_request_template.md): PR body structure.
+- [`release-plz.toml`](./release-plz.toml): release-plz configuration (single source of truth for changelog grouping).
