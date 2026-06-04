@@ -19,7 +19,7 @@ alloy-signer-local = { version = "1.6", features = ["keystore"] }
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.8"
+toml = "0.9"
 tracing = "0.1"
 zeroize = "1"
 
