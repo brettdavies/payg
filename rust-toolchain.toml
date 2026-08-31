@@ -7,5 +7,8 @@
 # the CI msrv job and the test/lint/doc/deny jobs all build against the same
 # version, and the file pin is the single source of truth.
 [toolchain]
-channel = "1.96.0" # released 2026-05-28
+channel = "1.96.0" # rustc ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96, released 2026-05-28
 components = ["rustfmt", "clippy"]
+# minimal keeps rust-docs, roughly 800MB per toolchain, out of the install.
+# The components above are named explicitly, so they arrive either way.
+profile = "minimal"
