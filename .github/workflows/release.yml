@@ -7,6 +7,14 @@ on:
 # Deny all permissions by default; grant per-job
 permissions: {}
 
+# The group key leads with a literal token naming the workflow that owns it, so
+# it cannot collide with a key a caller or callee produces from context alone.
+# This group never cancels: a run killed part way leaves a half-finished
+# release or deploy.
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   release-plz-release:
     name: Release
